@@ -436,9 +436,9 @@ export default function IntegrationsPage() {
           margin-bottom: 3rem;
         }
         .integration-card {
-          background: var(--surface-card);
+          background: var(--bg-card);
           border: 1px solid var(--border-color);
-          border-radius: var(--radius-eight);
+          border-radius: var(--radius-md);
           padding: 1.5rem;
           display: flex;
           flex-direction: column;
@@ -447,7 +447,7 @@ export default function IntegrationsPage() {
           transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
         .integration-card:hover {
-          border-color: var(--primary-accent);
+          border-color: var(--color-brand);
           box-shadow: 0 4px 24px rgba(0, 229, 255, 0.1);
         }
         .card-top {
@@ -490,12 +490,12 @@ export default function IntegrationsPage() {
         }
         .status-pill.connected {
           background: rgba(0, 229, 255, 0.08);
-          color: var(--primary-accent);
+          color: var(--color-brand);
           border-color: rgba(0, 229, 255, 0.25);
         }
         .status-pill.error {
           background: rgba(255, 0, 85, 0.08);
-          color: var(--error-color, #ff0055);
+          color: var(--color-error);
           border-color: rgba(255, 0, 85, 0.25);
         }
         .status-dot {
@@ -506,7 +506,7 @@ export default function IntegrationsPage() {
           display: inline-block;
         }
         .status-pill.connected .status-dot {
-          box-shadow: 0 0 8px var(--primary-accent);
+          box-shadow: 0 0 8px var(--color-brand);
           animation: pulse 1.8s infinite alternate;
         }
         .card-body {
@@ -537,7 +537,7 @@ export default function IntegrationsPage() {
         }
         .input-group input:focus {
           outline: none;
-          border-color: var(--primary-accent);
+          border-color: var(--color-brand);
           background: rgba(255, 255, 255, 0.05);
         }
         .input-group input:disabled {
@@ -585,7 +585,7 @@ export default function IntegrationsPage() {
           cursor: not-allowed;
         }
         .btn-primary {
-          background: var(--primary-accent);
+          background: var(--color-brand);
           color: #080c16;
         }
         .btn-primary:hover:not(:disabled) {
@@ -598,7 +598,7 @@ export default function IntegrationsPage() {
         }
         .btn-secondary:hover:not(:disabled) {
           background: rgba(255, 255, 255, 0.08);
-          border-color: var(--primary-accent);
+          border-color: var(--color-brand);
         }
         .alert-box {
           background: rgba(0, 229, 255, 0.08);
@@ -620,7 +620,7 @@ export default function IntegrationsPage() {
           font-weight: bold;
         }
         .alert-box.success .alert-icon {
-          color: var(--primary-accent);
+          color: var(--color-brand);
         }
         .alert-box.error .alert-icon {
           color: #ff0055;
@@ -638,9 +638,9 @@ export default function IntegrationsPage() {
           padding: 0 4px;
         }
         .sync-logs-section {
-          background: var(--surface-card);
+          background: var(--bg-card);
           border: 1px solid var(--border-color);
-          border-radius: var(--radius-eight);
+          border-radius: var(--radius-md);
           padding: 1.5rem;
           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
         }
@@ -680,7 +680,7 @@ export default function IntegrationsPage() {
         }
         .badge.success {
           background: rgba(0, 229, 255, 0.1);
-          color: var(--primary-accent);
+          color: var(--color-brand);
           border: 1px solid rgba(0, 229, 255, 0.2);
         }
         .badge.failed {
