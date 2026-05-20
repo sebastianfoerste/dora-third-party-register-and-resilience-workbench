@@ -41,6 +41,52 @@ export default function ContractReview({ contract }: Props) {
   const [findings, setFindings] = useState<FindingItem[]>(contract.clauseFindings);
   const [editingFindingId, setEditingFindingId] = useState<string | null>(null);
 
+  // AI Chat States
+  const [activeTab, setActiveTab] = useState<"ocr" | "chat">("ocr");
+  const [chatInput, setChatInput] = useState("");
+  const [chatMessages, setChatMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [sendingChat, setSendingChat] = useState(false);
+
+  const suggestedQueries = [
+    "Verify data residency and locations under Art. 30(2)(b)",
+    "Check whether subcontracting requires prior written approval (Art. 30(2)(i))",
+    "Is there an unrestricted right of inspection and supervisor audit? (Art. 30(2)(f))",
+    "Does the termination clause allow emergency termination? (Art. 30(2)(g))",
+  ];
+
+  const handleSendChat = async (messageText = chatInput) => {
+    if (!messageText.trim() || sendingChat) return;
+
+    const newMessages = [...chatMessages, { role: "user" as const, content: messageText }];
+    setChatMessages(newMessages);
+    setChatInput("");
+    setSendingChat(true);
+
+    try {
+      const response = await fetch(`/api/contracts/${contract.id}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: newMessages }),
+      });
+
+      const res = await response.json();
+      if (res.success && res.message) {
+        setChatMessages((prev) => [...prev, res.message]);
+      } else {
+        alert(res.error || "Failed to receive response from AI agent.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error sending message to contract auditor.");
+    } finally {
+      setSendingChat(false);
+    }
+  };
+
+  const handleSendSuggested = (query: string) => {
+    handleSendChat(query);
+  };
+
   // Override Form States
   const [overrideStatus, setOverrideStatus] = useState<any>("PRESENT");
   const [overrideDecision, setOverrideDecision] = useState<string>("OVERRIDDEN");
@@ -124,12 +170,173 @@ export default function ContractReview({ contract }: Props) {
 
       <div className="split-pane">
         
-        {/* Left Pane: Full Contract Text */}
-        <div className="pane-left">
-          <div style={{ paddingBottom: "1rem", borderBottom: "1px solid var(--border-color)", marginBottom: "1rem", color: "var(--text-primary)", fontWeight: 600, fontSize: "0.85rem" }}>
-            📄 Extracted Document Text (OCR Preview)
+        {/* Left Pane: Text Preview & Chat Assistant Tabs */}
+        <div className="pane-left" style={{ display: "flex", flexDirection: "column", height: "fit-content", minHeight: "650px" }}>
+          
+          {/* Tab Selector */}
+          <div style={{ display: "flex", gap: "1rem", borderBottom: "1px solid var(--border-color)", marginBottom: "1.25rem", paddingBottom: "0.5rem" }}>
+            <button
+              onClick={() => setActiveTab("ocr")}
+              style={{
+                background: "none",
+                border: "none",
+                color: activeTab === "ocr" ? "var(--color-brand)" : "var(--text-secondary)",
+                fontWeight: 600,
+                fontSize: "0.85rem",
+                cursor: "pointer",
+                paddingBottom: "0.25rem",
+                borderBottom: activeTab === "ocr" ? "2px solid var(--color-brand)" : "2px solid transparent",
+                transition: "all 0.2s ease",
+              }}
+            >
+              📄 Extracted Text (OCR Preview)
+            </button>
+            <button
+              onClick={() => setActiveTab("chat")}
+              style={{
+                background: "none",
+                border: "none",
+                color: activeTab === "chat" ? "var(--color-brand)" : "var(--text-secondary)",
+                fontWeight: 600,
+                fontSize: "0.85rem",
+                cursor: "pointer",
+                paddingBottom: "0.25rem",
+                borderBottom: activeTab === "chat" ? "2px solid var(--color-brand)" : "2px solid transparent",
+                transition: "all 0.2s ease",
+              }}
+            >
+              🤖 Interactive AI Auditor Chat
+            </button>
           </div>
-          {contract.extractedText || "No text content has been processed for this contract."}
+
+          {activeTab === "ocr" ? (
+            <div style={{ flex: 1, overflowY: "auto", whiteSpace: "pre-wrap", fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: "1.6", maxHeight: "600px", paddingRight: "0.5rem" }}>
+              {contract.extractedText || "No text content has been processed for this contract."}
+            </div>
+          ) : (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between", height: "100%", minHeight: "550px" }}>
+              
+              <div>
+                <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "0.75rem" }}>
+                  Ask Gemini questions or check specific compliance sections with quick prompts below.
+                </p>
+
+                {/* Chat Suggestion Pills */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: "1rem" }}>
+                  {suggestedQueries.map((query, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleSendSuggested(query)}
+                      disabled={sendingChat}
+                      style={{
+                        fontSize: "0.75rem",
+                        backgroundColor: "rgba(20, 184, 166, 0.03)",
+                        border: "1px solid rgba(20, 184, 166, 0.12)",
+                        borderRadius: "6px",
+                        padding: "0.45rem 0.75rem",
+                        color: "var(--color-brand)",
+                        cursor: "pointer",
+                        textAlign: "left",
+                        transition: "all 0.15s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = "rgba(20, 184, 166, 0.08)";
+                        e.currentTarget.style.borderColor = "rgba(20, 184, 166, 0.25)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "rgba(20, 184, 166, 0.03)";
+                        e.currentTarget.style.borderColor = "rgba(20, 184, 166, 0.12)";
+                      }}
+                    >
+                      💡 {query}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Chat Message Logs */}
+              <div
+                style={{
+                  flex: 1,
+                  overflowY: "auto",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "1rem",
+                  backgroundColor: "rgba(0, 0, 0, 0.2)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.85rem",
+                  marginBottom: "1rem",
+                  minHeight: "280px",
+                  maxHeight: "350px"
+                }}
+              >
+                {chatMessages.length === 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-muted)", fontSize: "0.8rem", padding: "2rem", textAlign: "center", flex: 1 }}>
+                    <span>Audit Assistant ready. Choose a quick query above or enter a custom prompt.</span>
+                  </div>
+                ) : (
+                  chatMessages.map((msg, index) => (
+                    <div
+                      key={index}
+                      style={{
+                        alignSelf: msg.role === "user" ? "flex-end" : "flex-start",
+                        maxWidth: "85%",
+                        backgroundColor: msg.role === "user" ? "rgba(20, 184, 166, 0.08)" : "rgba(255,255,255,0.03)",
+                        border: msg.role === "user" ? "1px solid rgba(20, 184, 166, 0.25)" : "1px solid var(--border-color)",
+                        borderRadius: "6px",
+                        padding: "0.6rem 0.85rem",
+                      }}
+                    >
+                      <div style={{ fontSize: "0.65rem", fontWeight: 700, color: msg.role === "user" ? "var(--color-brand)" : "var(--text-secondary)", marginBottom: "0.25rem", textTransform: "uppercase" }}>
+                        {msg.role === "user" ? "Compliance Officer" : "AI Auditor Agent"}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "0.8rem",
+                          color: "var(--text-primary)",
+                          lineHeight: "1.45",
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
+                        {msg.content}
+                      </div>
+                    </div>
+                  ))
+                )}
+                {sendingChat && (
+                  <div style={{ alignSelf: "flex-start", padding: "0.3rem 0.85rem" }}>
+                    <div className="spinner" style={{ width: "1rem", height: "1rem" }} />
+                  </div>
+                )}
+              </div>
+
+              {/* Chat Input */}
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Ask about audit rights, termination clauses, governing law..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSendChat();
+                  }}
+                  disabled={sendingChat}
+                  style={{ flex: 1, fontSize: "0.85rem" }}
+                />
+                <button
+                  className="btn btn-primary"
+                  onClick={() => handleSendChat()}
+                  disabled={sendingChat || !chatInput.trim()}
+                  style={{ padding: "0.4rem 1rem", fontSize: "0.85rem" }}
+                >
+                  Send
+                </button>
+              </div>
+
+            </div>
+          )}
         </div>
 
         {/* Right Pane: Requirements Checklist */}
