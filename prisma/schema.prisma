@@ -60,6 +60,7 @@ model ICTService {
   subcontractors        Subcontractor[]
   exitPlan              ExitPlan?
   incidents             IncidentLog[]
+  resilienceTests       ResilienceTest[]
 }
 
 model Contract {
@@ -137,6 +138,10 @@ model RegisterEntry {
   mandatoryFields  String      // JSON list of validated mandatory fields
   validationStatus String      // VALID, INVALID, WARNING
   validationErrors String?     // JSON list of errors
+  lastReviewedAt   DateTime?
+  nextReviewDue    DateTime?
+  reviewerNotes    String?
+  reviewHistory    ReviewCycle[]
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 }
@@ -224,4 +229,28 @@ model PolicySetting {
   value       String   // Weight or Boolean threshold configuration value
   description String?
   updatedAt   DateTime @updatedAt
+}
+
+model ResilienceTest {
+  id                 String     @id @default(uuid())
+  serviceId          String
+  service            ICTService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  testType           String     // VULNERABILITY_ASSESSMENT, PENETRATION_TEST, SCENARIO_DR, TLPT
+  testDate           DateTime
+  status             String     // PASSED, FAILED, PENDING
+  findingsCount      Int        @default(0)
+  evidenceSummary    String
+  nextScheduledDate  DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+}
+
+model ReviewCycle {
+  id               String        @id @default(uuid())
+  registerEntryId  String
+  registerEntry    RegisterEntry @relation(fields: [registerEntryId], references: [id], onDelete: Cascade)
+  reviewedAt       DateTime      @default(now())
+  reviewer         String
+  notes            String?
+  status           String        @default("COMPLETED")
 }
