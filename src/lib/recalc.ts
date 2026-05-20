@@ -20,7 +20,11 @@ export async function recalculateAllRegisters() {
     include: {
       legalEntity: true,
       vendor: true,
-      service: true,
+      service: {
+        include: {
+          resilienceTests: true,
+        },
+      },
       contract: {
         include: {
           clauseFindings: {
@@ -50,6 +54,8 @@ export async function recalculateAllRegisters() {
         contract: entry.contract,
         findings: findingsMapped,
         criticality: entry.criticality as any,
+        nextReviewDue: entry.nextReviewDue,
+        resilienceTests: (entry.service as any).resilienceTests,
       },
       options
     );

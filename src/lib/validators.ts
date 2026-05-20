@@ -44,19 +44,27 @@ export function validateRegisterEntry(
       severity: string;
     }>;
     criticality: "CRITICAL" | "IMPORTANT" | "NON_CRITICAL";
+    nextReviewDue?: Date | string | null;
+    resilienceTests?: Array<{
+      testType: string;
+      testDate: Date | string;
+      status: string;
+      findingsCount: number;
+      evidenceSummary: string;
+    }>;
   },
   options?: {
     enforceEEADataResidency?: boolean;
     enforceEUGoverningLaw?: boolean;
     enforceExitPlan?: boolean;
   }
-): ValidationResult {
+ ): ValidationResult {
   const errors: ValidationError[] = [];
-  let totalChecks = 12;
-  let passedChecks = 12;
-
-  const { legalEntity, vendor, service, contract, findings, criticality } = data;
-
+  let totalChecks = 15;
+  let passedChecks = 15;
+ 
+  const { legalEntity, vendor, service, contract, findings, criticality, nextReviewDue, resilienceTests } = data;
+ 
   // 1. Legal Entity Checks
   if (!legalEntity.lei) {
     errors.push({
@@ -77,7 +85,7 @@ export function validateRegisterEntry(
     });
     passedChecks -= 1.0;
   }
-
+ 
   // 2. Vendor Checks
   if (!vendor.lei) {
     errors.push({
@@ -98,7 +106,7 @@ export function validateRegisterEntry(
     });
     passedChecks -= 1.0;
   }
-
+ 
   // 3. Service Location
   if (!service.location) {
     errors.push({
@@ -127,7 +135,7 @@ export function validateRegisterEntry(
       }
     }
   }
-
+ 
   // 4. Criticality Exit Plan Check
   const isCriticalOrImportant = criticality === "CRITICAL" || criticality === "IMPORTANT";
   const enforceExit = options?.enforceExitPlan !== false;
@@ -150,6 +158,90 @@ export function validateRegisterEntry(
         type: "RISK",
       });
       passedChecks -= 0.8;
+    }
+  }
+
+  // 4a. Resilience Testing Validation (DORA Article 24/25)
+  if (isCriticalOrImportant) {
+    const testList = resilienceTests || [];
+    const passedTests = testList.filter((t) => t.status === "PASSED");
+    const latestTest = testList.length > 0 
+      ? [...testList].sort((a,b) => new Date(b.testDate).getTime() - new Date(a.testDate).getTime())[0]
+      : null;
+
+    if (testList.length === 0) {
+      errors.push({
+        id: "critical-no-resilience-testing",
+        field: "service.resilienceTests",
+        message: `Service supporting '${service.supportedFunction}' is classified as ${criticality} but lacks recorded resilience testing evidence (DORA Article 24).`,
+        severity: "HIGH",
+        type: "RISK",
+      });
+      passedChecks -= 1.5;
+    } else if (latestTest && latestTest.status === "FAILED") {
+      errors.push({
+        id: "critical-resilience-test-failed",
+        field: "service.resilienceTests",
+        message: `The latest resilience test (${latestTest.testType}) for service supporting '${service.supportedFunction}' on ${new Date(latestTest.testDate).toLocaleDateString()} FAILED with ${latestTest.findingsCount} findings.`,
+        severity: "HIGH",
+        type: "RISK",
+      });
+      passedChecks -= 1.8;
+    } else {
+      const latestPassed = passedTests.sort((a,b) => new Date(b.testDate).getTime() - new Date(a.testDate).getTime())[0];
+      if (latestPassed) {
+        const today = new Date();
+        const testDateObj = new Date(latestPassed.testDate);
+        const testAgeDays = Math.ceil((today.getTime() - testDateObj.getTime()) / (1000 * 60 * 60 * 24));
+        if (testAgeDays > 365) {
+          errors.push({
+            id: "critical-resilience-test-outdated",
+            field: "service.resilienceTests",
+            message: `Latest passed resilience test (${latestPassed.testType}) is outdated (${testAgeDays} days old). DORA Article 24 requires annual testing.`,
+            severity: "MEDIUM",
+            type: "RISK",
+          });
+          passedChecks -= 0.8;
+        }
+      } else {
+        errors.push({
+          id: "critical-no-passed-resilience-test",
+          field: "service.resilienceTests",
+          message: `Service supporting '${service.supportedFunction}' has no passed resilience testing evidence recorded.`,
+          severity: "HIGH",
+          type: "RISK",
+        });
+        passedChecks -= 1.5;
+      }
+    }
+  }
+
+  // 4b. Annual Review Validation (DORA Article 30)
+  if (nextReviewDue) {
+    const today = new Date();
+    const due = new Date(nextReviewDue);
+    if (due.getTime() < today.getTime()) {
+      errors.push({
+        id: "register-annual-review-overdue",
+        field: "register.nextReviewDue",
+        message: `Annual registry compliance review is overdue (was due on ${due.toLocaleDateString()}).`,
+        severity: "HIGH",
+        type: "RISK",
+      });
+      passedChecks -= 1.5;
+    } else {
+      const diffTime = due.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays <= 30) {
+        errors.push({
+          id: "register-annual-review-imminent",
+          field: "register.nextReviewDue",
+          message: `Annual registry review is due in ${diffDays} days (${due.toLocaleDateString()}).`,
+          severity: "MEDIUM",
+          type: "RISK",
+        });
+        passedChecks -= 0.5;
+      }
     }
   }
 

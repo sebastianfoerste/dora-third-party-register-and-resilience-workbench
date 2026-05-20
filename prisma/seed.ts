@@ -360,7 +360,7 @@ async function main() {
 
   console.log("Seeding Register Entries...");
   // Register entry 1 (Valid)
-  await prisma.registerEntry.create({
+  const re1 = await prisma.registerEntry.create({
     data: {
       legalEntityId: bp.id,
       vendorId: aws.id,
@@ -369,11 +369,13 @@ async function main() {
       criticality: "CRITICAL",
       mandatoryFields: JSON.stringify(["legalEntityName", "vendorName", "serviceDescription", "criticality", "lei"]),
       validationStatus: "VALID",
+      lastReviewedAt: new Date("2026-01-15T00:00:00Z"),
+      nextReviewDue: new Date("2027-01-15T00:00:00Z"),
     },
   });
 
   // Register entry 2 (Warning due to missing exit plan on critical service, missing LEI, USA governing law)
-  await prisma.registerEntry.create({
+  const re2 = await prisma.registerEntry.create({
     data: {
       legalEntityId: sol.id,
       vendorId: fb.id,
@@ -388,6 +390,56 @@ async function main() {
         "Governing law is outside the EU (New York, USA).",
         "Multiple critical clause requirements are missing (Audit rights, Incident reports, Exit strategy)."
       ]),
+      lastReviewedAt: new Date("2025-03-01T00:00:00Z"),
+      nextReviewDue: new Date("2026-03-01T00:00:00Z"), // Overdue!
+    },
+  });
+
+  console.log("Seeding Review Cycles...");
+  await prisma.reviewCycle.create({
+    data: {
+      registerEntryId: re1.id,
+      reviewedAt: new Date("2026-01-15T09:00:00Z"),
+      reviewer: "Audrey CCO",
+      notes: "Full annual compliance sign-off. Governing law, Exit plan, and AWS resilience verification complete.",
+      status: "COMPLETED",
+    },
+  });
+
+  console.log("Seeding Resilience Tests...");
+  await prisma.resilienceTest.create({
+    data: {
+      serviceId: awsService.id,
+      testType: "PENETRATION_TEST",
+      testDate: new Date("2025-11-12T00:00:00Z"),
+      status: "PASSED",
+      findingsCount: 0,
+      evidenceSummary: "External penetration test of AWS hosting environment. Zero high or critical severity vulnerabilities found.",
+      nextScheduledDate: new Date("2026-11-12T00:00:00Z"),
+    },
+  });
+
+  await prisma.resilienceTest.create({
+    data: {
+      serviceId: awsService.id,
+      testType: "SCENARIO_DR",
+      testDate: new Date("2026-02-15T00:00:00Z"),
+      status: "PASSED",
+      findingsCount: 1,
+      evidenceSummary: "Disaster Recovery drill simulating region failure. Successfully failed over core transaction database to backup Equinix nodes in 12 minutes.",
+      nextScheduledDate: new Date("2027-02-15T00:00:00Z"),
+    },
+  });
+
+  await prisma.resilienceTest.create({
+    data: {
+      serviceId: fbService.id,
+      testType: "VULNERABILITY_ASSESSMENT",
+      testDate: new Date("2026-05-10T10:00:00Z"),
+      status: "FAILED",
+      findingsCount: 3,
+      evidenceSummary: "Quarterly vulnerability assessment. Identified 3 high-severity open CVEs in the API routing gateway that allow potential session manipulation. Remediation is in progress.",
+      nextScheduledDate: new Date("2026-08-10T00:00:00Z"),
     },
   });
 

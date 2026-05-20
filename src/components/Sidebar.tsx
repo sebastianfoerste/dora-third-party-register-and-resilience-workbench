@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+
+interface LegalEntity {
+  id: string;
+  name: string;
+  licenceType: string;
+}
 
 const NAV_ITEMS = [
   {
@@ -77,6 +84,33 @@ const NAV_ITEMS = [
     ),
   },
   {
+    name: "Resilience Hub",
+    path: "/resilience",
+    icon: (
+      <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+      </svg>
+    ),
+  },
+  {
+    name: "Annual Reviews",
+    path: "/annual-reviews",
+    icon: (
+      <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+    ),
+  },
+  {
+    name: "Outreach Console",
+    path: "/outreach",
+    icon: (
+      <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+    ),
+  },
+  {
     name: "Policy Settings",
     path: "/settings",
     icon: (
@@ -90,14 +124,70 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [entities, setEntities] = useState<LegalEntity[]>([]);
+  const selectedEntity = searchParams?.get("entity") || "all";
+
+  useEffect(() => {
+    fetch("/api/legal-entities")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setEntities(data.entities);
+        }
+      })
+      .catch((err) => console.error("Failed to fetch legal entities in sidebar:", err));
+  }, []);
+
+  const handleEntityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    const params = new URLSearchParams(window.location.search);
+    if (value === "all") {
+      params.delete("entity");
+    } else {
+      params.set("entity", value);
+    }
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   return (
     <aside className="sidebar">
-      <div className="logo-container">
+      <div className="logo-container" style={{ borderBottom: "none", paddingBottom: 0 }}>
         <div className="logo-icon">D</div>
         <div className="logo-text">DORA Workbench</div>
       </div>
-      <nav style={{ flex: 1 }}>
+
+      <div style={{ padding: "0.5rem 1rem 1rem 1rem", borderBottom: "1px solid var(--border-color)" }}>
+        <label style={{ display: "block", fontSize: "0.65rem", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "0.4rem", fontWeight: 600 }}>
+          Consolidation Context
+        </label>
+        <select
+          value={selectedEntity}
+          onChange={handleEntityChange}
+          style={{
+            width: "100%",
+            backgroundColor: "rgba(10, 12, 18, 0.6)",
+            color: "var(--text-primary)",
+            border: "1px solid var(--border-color)",
+            borderRadius: "4px",
+            padding: "0.4rem 0.5rem",
+            fontSize: "0.75rem",
+            fontWeight: 500,
+            outline: "none",
+            cursor: "pointer",
+          }}
+        >
+          <option value="all">🏢 Consolidated Group View</option>
+          {entities.map((ent) => (
+            <option key={ent.id} value={ent.id}>
+              🛡️ {ent.name} ({ent.licenceType})
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <nav style={{ flex: 1, marginTop: "0.5rem" }}>
         <ul className="nav-links">
           {NAV_ITEMS.map((item) => {
             const isActive =

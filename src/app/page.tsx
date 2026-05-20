@@ -4,9 +4,13 @@ import Link from "next/link";
 
 export const revalidate = 0; // Disable caching to ensure data is always fresh
 
-export default async function DashboardPage() {
+export default async function DashboardPage(props: { searchParams: Promise<{ entity?: string }> }) {
+  const searchParams = await props.searchParams;
+  const entityFilter = searchParams.entity || "all";
+
   // Load data from DB
   const entries = await prisma.registerEntry.findMany({
+    where: entityFilter !== "all" ? { legalEntityId: entityFilter } : {},
     include: {
       legalEntity: true,
       vendor: true,
@@ -16,6 +20,7 @@ export default async function DashboardPage() {
             orderBy: { createdAt: "desc" },
             take: 1,
           },
+          resilienceTests: true,
         },
       },
       contract: {
@@ -28,9 +33,24 @@ export default async function DashboardPage() {
     },
   });
 
-  const vendors = await prisma.vendor.findMany();
+  const activeVendorIds = Array.from(new Set(entries.map((e) => e.vendorId)));
+  const vendors = await prisma.vendor.findMany({
+    where: entityFilter !== "all" ? { id: { in: activeVendorIds } } : {},
+  });
+
   const openTasks = await prisma.remediationTask.findMany({
-    where: { status: "OPEN" },
+    where: {
+      status: "OPEN",
+      ...(entityFilter !== "all"
+        ? {
+            finding: {
+              contract: {
+                legalEntityId: entityFilter,
+              },
+            },
+          }
+        : {}),
+    },
   });
 
   // Load active policy settings from DB
@@ -69,6 +89,8 @@ export default async function DashboardPage() {
       contract: entry.contract,
       findings: findingsMapped,
       criticality: entry.criticality as any,
+      nextReviewDue: entry.nextReviewDue,
+      resilienceTests: (entry.service as any).resilienceTests,
     }, options);
 
     totalScore += valResult.score;
