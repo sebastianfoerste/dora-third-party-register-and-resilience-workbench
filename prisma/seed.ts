@@ -110,6 +110,21 @@ This License Agreement is entered into on June 1, 2025, between Solaris SE ("Cus
 `;
 
 async function main() {
+  console.log("Cleaning up database...");
+  await prisma.auditLog.deleteMany();
+  await prisma.remediationTask.deleteMany();
+  await prisma.clauseFinding.deleteMany();
+  await prisma.registerEntry.deleteMany();
+  await prisma.contract.deleteMany();
+  await prisma.iCTService.deleteMany();
+  await prisma.vendor.deleteMany();
+  await prisma.legalEntity.deleteMany();
+  await prisma.clauseRequirement.deleteMany();
+  await prisma.subcontractor.deleteMany();
+  await prisma.exitPlan.deleteMany();
+  await prisma.incidentLog.deleteMany();
+  await prisma.policySetting.deleteMany();
+
   console.log("Seeding DORA requirements...");
   const createdReqs = [];
   for (const r of DORA_REQUIREMENTS) {
@@ -376,13 +391,93 @@ async function main() {
     },
   });
 
+  console.log("Seeding Subcontractors...");
+  await prisma.subcontractor.create({
+    data: {
+      serviceId: fbService.id,
+      name: "Cloudflare Inc",
+      lei: "549300V5T1J3Z5K9L182",
+      country: "US",
+      serviceDescription: "Edge DDoS protection and CDN services",
+      criticality: "CRITICAL",
+      location: "Global Edge Nodes (Anycast)",
+    },
+  });
+
+  console.log("Seeding Exit Plans...");
+  await prisma.exitPlan.create({
+    data: {
+      serviceId: awsService.id,
+      title: "Exit Strategy - Bitpanda Core Ledger Migration",
+      strategy: "Primary fallback is replication to secondary private cloud hosting in Frankfurt (Equinix FR2). Continuous block replication of SQL databases is validated bi-annually. Expected cut-over time is under 4 hours.",
+      testedDate: new Date("2026-02-15"),
+      alternativeVendor: "Equinix Germany GmbH",
+      status: "APPROVED",
+      reviewer: "Chief Resilience Officer",
+    },
+  });
+
+  console.log("Seeding Incidents...");
+  // Resolved incident
+  await prisma.incidentLog.create({
+    data: {
+      serviceId: awsService.id,
+      title: "AWS EC2 Instance Degradation - EU-Central-1",
+      severity: "MINOR",
+      description: "A minor hardware degradation affected the primary database instance. Failover completed automatically within 45 seconds.",
+      incidentDate: new Date("2026-04-10T14:30:00Z"),
+      downtimeMinutes: 1,
+      status: "RESOLVED",
+      remediationAction: "AWS replaced the underlying hardware node. Automated failover confirmed working.",
+    },
+  });
+
+  // Active outage incident
+  await prisma.incidentLog.create({
+    data: {
+      serviceId: fbService.id,
+      title: "Fireblocks API Connection Timed Out",
+      severity: "MAJOR",
+      description: "Latency spike in European gateway routing led to multiple failed API calls for wallet key operations.",
+      incidentDate: new Date("2026-05-19T22:15:00Z"),
+      downtimeMinutes: 35,
+      status: "ACTIVE",
+      remediationAction: "Fireblocks engineering is investigating routing issues. Solaris SE team has routed secondary calls through US gateway.",
+    },
+  });
+
+  console.log("Seeding Policy Settings...");
+  await prisma.policySetting.create({
+    data: {
+      key: "enforce_eea_data_residency",
+      value: "true",
+      description: "Reduce compliance score if data storage or processing locations are outside the European Economic Area (EEA).",
+    },
+  });
+
+  await prisma.policySetting.create({
+    data: {
+      key: "enforce_eu_governing_law",
+      value: "true",
+      description: "Flag contracts whose governing law is outside EU/EEA jurisdictions.",
+    },
+  });
+
+  await prisma.policySetting.create({
+    data: {
+      key: "enforce_exit_plan_for_critical_services",
+      value: "true",
+      description: "Enforce that critical or important functions must have a validated, approved exit plan.",
+    },
+  });
+
   console.log("Audit Logs...");
   await prisma.auditLog.create({
     data: {
       actor: "System Initializer",
       action: "SEED_DATABASE",
       object: "Database",
-      afterSnapshot: "Successfully created default register entries, requirements, mock contracts, and classifications.",
+      afterSnapshot: "Successfully created default register entries, requirements, mock contracts, and active resilience data.",
     },
   });
 

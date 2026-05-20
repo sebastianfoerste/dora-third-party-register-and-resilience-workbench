@@ -17,33 +17,40 @@ export function validateLEI(lei: string | null): boolean {
   return /^[A-Z0-9]{20}$/.test(lei.trim().toUpperCase());
 }
 
-export function validateRegisterEntry(data: {
-  legalEntity: { name: string; lei: string | null; jurisdiction: string; licenceType: string };
-  vendor: { legalName: string; country: string; lei: string | null };
-  service: {
-    serviceDescription: string;
-    supportedFunction: string;
-    location: string;
-    subcontractingStatus: string;
-    subcontractorDetails: string | null;
-    substitutability: string;
-    exitPlanStatus: string;
-  };
-  contract: {
-    sourceFile: string;
-    effectiveDate: Date | null;
-    renewalDate: Date | null;
-    terminationDate: Date | null;
-    governingLaw: string;
-  } | null;
-  findings: Array<{
-    requirementId: string;
-    requirementName: string;
-    status: string;
-    severity: string;
-  }>;
-  criticality: "CRITICAL" | "IMPORTANT" | "NON_CRITICAL";
-}): ValidationResult {
+export function validateRegisterEntry(
+  data: {
+    legalEntity: { name: string; lei: string | null; jurisdiction: string; licenceType: string };
+    vendor: { legalName: string; country: string; lei: string | null };
+    service: {
+      serviceDescription: string;
+      supportedFunction: string;
+      location: string;
+      subcontractingStatus: string;
+      subcontractorDetails: string | null;
+      substitutability: string;
+      exitPlanStatus: string;
+    };
+    contract: {
+      sourceFile: string;
+      effectiveDate: Date | null;
+      renewalDate: Date | null;
+      terminationDate: Date | null;
+      governingLaw: string;
+    } | null;
+    findings: Array<{
+      requirementId: string;
+      requirementName: string;
+      status: string;
+      severity: string;
+    }>;
+    criticality: "CRITICAL" | "IMPORTANT" | "NON_CRITICAL";
+  },
+  options?: {
+    enforceEEADataResidency?: boolean;
+    enforceEUGoverningLaw?: boolean;
+    enforceExitPlan?: boolean;
+  }
+): ValidationResult {
   const errors: ValidationError[] = [];
   let totalChecks = 12;
   let passedChecks = 12;
@@ -102,19 +109,48 @@ export function validateRegisterEntry(data: {
       type: "DATA_GAP",
     });
     passedChecks -= 1.0;
+  } else {
+    const enforceEEA = options?.enforceEEADataResidency !== false;
+    if (enforceEEA) {
+      const nonEEAKeywords = ["US", "USA", "AMERICA", "ISRAEL", "IL", "UK", "LONDON", "GREAT BRITAIN", "SWITZERLAND", "CH", "NEW YORK", "TEL AVIV"];
+      const locUpper = service.location.toUpperCase();
+      const isNonEEA = nonEEAKeywords.some((k) => locUpper.includes(k));
+      if (isNonEEA) {
+        errors.push({
+          id: "service-location-non-eea",
+          field: "service.location",
+          message: `Data is stored or processed outside the EEA (${service.location}). Non-EEA data residency is restricted under active policy rules.`,
+          severity: "HIGH",
+          type: "RISK",
+        });
+        passedChecks -= 1.2;
+      }
+    }
   }
 
   // 4. Criticality Exit Plan Check
   const isCriticalOrImportant = criticality === "CRITICAL" || criticality === "IMPORTANT";
-  if (isCriticalOrImportant && (!service.exitPlanStatus || service.exitPlanStatus === "NONE")) {
-    errors.push({
-      id: "critical-no-exit-plan",
-      field: "service.exitPlanStatus",
-      message: `Service supporting '${service.supportedFunction}' is classified as ${criticality} but has no Exit Plan.`,
-      severity: "HIGH",
-      type: "RISK",
-    });
-    passedChecks -= 1.5;
+  const enforceExit = options?.enforceExitPlan !== false;
+  if (isCriticalOrImportant) {
+    if (!service.exitPlanStatus || service.exitPlanStatus === "NONE") {
+      errors.push({
+        id: "critical-no-exit-plan",
+        field: "service.exitPlanStatus",
+        message: `Service supporting '${service.supportedFunction}' is classified as ${criticality} but has no Exit Plan.`,
+        severity: "HIGH",
+        type: "RISK",
+      });
+      passedChecks -= 1.5;
+    } else if (enforceExit && service.exitPlanStatus !== "APPROVED") {
+      errors.push({
+        id: "critical-exit-plan-unapproved",
+        field: "service.exitPlanStatus",
+        message: `Exit Plan for service supporting '${service.supportedFunction}' is in '${service.exitPlanStatus}' status. Active policy requires CCO-APPROVED exit plans.`,
+        severity: "MEDIUM",
+        type: "RISK",
+      });
+      passedChecks -= 0.8;
+    }
   }
 
   // 5. Subcontracting Checks
@@ -147,15 +183,16 @@ export function validateRegisterEntry(data: {
     const euCountries = ["DE", "FR", "IE", "NL", "LU", "BE", "IT", "ES", "PT", "AT", "DK", "SE", "FI", "PL", "GR", "CZ", "HU", "RO", "BG", "HR", "SK", "SI", "EE", "LV", "LT", "CY", "MT", "GERMANY", "FRANCE", "IRELAND", "NETHERLANDS", "EU", "EUROPEAN UNION"];
     const law = contract.governingLaw.toUpperCase();
     const isEULaw = euCountries.some((country) => law.includes(country));
+    const enforceEU = options?.enforceEUGoverningLaw !== false;
     if (!isEULaw && law !== "") {
       errors.push({
         id: "governing-law-non-eu",
         field: "contract.governingLaw",
-        message: `Contract governing law (${contract.governingLaw}) may be outside the EU. DORA requires aligning jurisdiction.`,
-        severity: "LOW",
+        message: `Contract governing law (${contract.governingLaw}) is outside the EU/EEA. DORA requires aligning jurisdiction.`,
+        severity: enforceEU ? "HIGH" : "LOW",
         type: "RISK",
       });
-      passedChecks -= 0.4;
+      passedChecks -= enforceEU ? 1.2 : 0.4;
     }
 
     // 8. Contract Expiry Check (within 90 days)

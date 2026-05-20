@@ -20,6 +20,7 @@ export default async function VendorDetailPage({ params }: RouteParams) {
           criticalityAssessments: {
             orderBy: { createdAt: "desc" },
           },
+          subcontractors: true,
         },
       },
     },

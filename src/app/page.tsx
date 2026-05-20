@@ -33,6 +33,19 @@ export default async function DashboardPage() {
     where: { status: "OPEN" },
   });
 
+  // Load active policy settings from DB
+  const dbSettings = await prisma.policySetting.findMany();
+  const settingsMap: Record<string, string> = {};
+  dbSettings.forEach((s) => {
+    settingsMap[s.key] = s.value;
+  });
+
+  const options = {
+    enforceEEADataResidency: settingsMap["enforce_eea_data_residency"] === "true",
+    enforceEUGoverningLaw: settingsMap["enforce_eu_governing_law"] === "true",
+    enforceExitPlan: settingsMap["enforce_exit_plan_for_critical_services"] === "true",
+  };
+
   // Calculate live validation scores for all register entries
   let totalScore = 0;
   let criticalCount = 0;
@@ -56,7 +69,7 @@ export default async function DashboardPage() {
       contract: entry.contract,
       findings: findingsMapped,
       criticality: entry.criticality as any,
-    });
+    }, options);
 
     totalScore += valResult.score;
     if (entry.criticality === "CRITICAL" || entry.criticality === "IMPORTANT") {

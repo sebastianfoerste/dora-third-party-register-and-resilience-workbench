@@ -57,6 +57,9 @@ model ICTService {
   updatedAt             DateTime             @updatedAt
   criticalityAssessments CriticalityAssessment[]
   registerEntries       RegisterEntry[]
+  subcontractors        Subcontractor[]
+  exitPlan              ExitPlan?
+  incidents             IncidentLog[]
 }
 
 model Contract {
@@ -170,4 +173,55 @@ model AuditLog {
   beforeSnapshot String?  // JSON
   afterSnapshot  String?  // JSON
   timestamp      DateTime @default(now())
+}
+
+model Subcontractor {
+  id                 String     @id @default(uuid())
+  serviceId          String
+  service            ICTService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  name               String
+  lei                String?
+  country            String
+  serviceDescription String
+  criticality        String     @default("NON_CRITICAL") // CRITICAL, IMPORTANT, NON_CRITICAL
+  location           String
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+}
+
+model ExitPlan {
+  id                 String      @id @default(uuid())
+  serviceId          String      @unique
+  service            ICTService  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  title              String
+  strategy           String      // Detailed transition strategy
+  testedDate         DateTime?
+  alternativeVendor  String?
+  status             String      @default("DRAFT") // DRAFT, UNDER_REVIEW, APPROVED
+  reviewer           String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+}
+
+model IncidentLog {
+  id                String     @id @default(uuid())
+  serviceId         String
+  service           ICTService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  title             String
+  severity          String     // CRITICAL, MAJOR, MINOR
+  description       String
+  incidentDate      DateTime   @default(now())
+  downtimeMinutes   Int        @default(0)
+  status            String     @default("ACTIVE") // ACTIVE, RESOLVED
+  remediationAction String?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+}
+
+model PolicySetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String   // Weight or Boolean threshold configuration value
+  description String?
+  updatedAt   DateTime @updatedAt
 }
