@@ -39,7 +39,9 @@ export default function RegisterCockpit({ initialEntries, legalEntities, vendors
   // Target DORA register fields
   const TARGET_FIELDS = [
     { key: "legalEntityName", label: "Legal Entity Name (Required)" },
+    { key: "legalEntityLei", label: "Legal Entity LEI (ISO 17442)" },
     { key: "vendorName", label: "Vendor Name (Required)" },
+    { key: "vendorLei", label: "Vendor LEI (ISO 17442)" },
     { key: "serviceDescription", label: "Service Description (Required)" },
     { key: "supportedFunction", label: "Supported Function" },
     { key: "location", label: "Data Storage Location" },
@@ -75,8 +77,10 @@ export default function RegisterCockpit({ initialEntries, legalEntities, vendors
             return (
               hl === tl ||
               hl.includes(tl) ||
-              (tf.key === "legalEntityName" && (hl.includes("entity") || hl.includes("firm") || hl.includes("company"))) ||
-              (tf.key === "vendorName" && (hl.includes("vendor") || hl.includes("provider") || hl.includes("supplier"))) ||
+              (tf.key === "legalEntityName" && (hl.includes("entity") || hl.includes("firm") || hl.includes("company")) && !hl.includes("lei")) ||
+              (tf.key === "legalEntityLei" && hl.includes("lei") && (hl.includes("entity") || hl.includes("legal") || hl.includes("firm") || hl.includes("own"))) ||
+              (tf.key === "vendorName" && (hl.includes("vendor") || hl.includes("provider") || hl.includes("supplier")) && !hl.includes("lei")) ||
+              (tf.key === "vendorLei" && hl.includes("lei") && (hl.includes("vendor") || hl.includes("provider") || hl.includes("supplier"))) ||
               (tf.key === "serviceDescription" && (hl.includes("service") || hl.includes("desc"))) ||
               (tf.key === "supportedFunction" && (hl.includes("function") || hl.includes("core"))) ||
               (tf.key === "location" && (hl.includes("location") || hl.includes("country") || hl.includes("region")))

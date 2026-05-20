@@ -86,6 +86,42 @@ export default async function DashboardPage() {
     countries[v.country] = (countries[v.country] || 0) + 1;
   });
 
+  // Herfindahl-Hirschman Index (HHI) concentration calculations
+  const serviceCountsByVendor: Record<string, number> = {};
+  let totalServicesCount = 0;
+  entries.forEach((e) => {
+    if (e.vendorId) {
+      serviceCountsByVendor[e.vendorId] = (serviceCountsByVendor[e.vendorId] || 0) + 1;
+      totalServicesCount++;
+    }
+  });
+
+  let hhi = 0;
+  const vendorShares: Array<{ name: string; count: number; share: number }> = [];
+  if (totalServicesCount > 0) {
+    Object.entries(serviceCountsByVendor).forEach(([vendorId, count]) => {
+      const share = (count / totalServicesCount) * 100;
+      hhi += share * share;
+      
+      const vendorName = entries.find((e) => e.vendorId === vendorId)?.vendor.legalName || "Unknown Vendor";
+      vendorShares.push({ name: vendorName, count, share: Math.round(share) });
+    });
+  }
+  hhi = Math.round(hhi);
+
+  let hhiCategory = "Diversified";
+  let hhiColor = "var(--color-brand)";
+  let hhiDescription = "Low concentration risk. Matches best practice standards.";
+  if (hhi > 2500) {
+    hhiCategory = "Highly Concentrated";
+    hhiColor = "var(--color-error)";
+    hhiDescription = "Critical concentration risk. Supervisor review likely triggers warnings.";
+  } else if (hhi >= 1500) {
+    hhiCategory = "Moderately Concentrated";
+    hhiColor = "var(--color-warning)";
+    hhiDescription = "Moderate concentration. Review alternative providers regularly.";
+  }
+
   // Load pending items for action feed
   const pendingAssessments = await prisma.criticalityAssessment.findMany({
     where: { status: "PENDING" },
@@ -213,6 +249,37 @@ export default async function DashboardPage() {
 
         {/* Right Column: Concentration & Action Feed */}
         <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+          {/* Vendor concentration HHI card */}
+          <div className="card">
+            <h2 style={{ fontSize: "1.2rem", marginBottom: "0.25rem" }}>Systemic Concentration (HHI)</h2>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "1rem" }}>
+              Herfindahl-Hirschman Index based on service counts. Targets supervisory thresholds under DORA.
+            </p>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", marginBottom: "0.5rem" }}>
+              <span style={{ fontSize: "2rem", fontWeight: 700, color: hhiColor }}>{hhi}</span>
+              <span className="badge" style={{ backgroundColor: `${hhiColor}22`, color: hhiColor, border: `1px solid ${hhiColor}`, fontWeight: 600, fontSize: "0.75rem" }}>
+                {hhiCategory}
+              </span>
+            </div>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginBottom: "1.25rem", lineHeight: "1.3" }}>
+              {hhiDescription}
+            </p>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              {vendorShares.sort((a,b) => b.count - a.count).map((vs) => (
+                <div key={vs.name} style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem" }}>
+                    <span style={{ fontWeight: 500 }}>{vs.name}</span>
+                    <span style={{ fontWeight: 600, color: "var(--text-muted)" }}>{vs.count} service{vs.count > 1 ? "s" : ""} ({vs.share}%)</span>
+                  </div>
+                  <div style={{ width: "100%", height: "4px", backgroundColor: "rgba(255,255,255,0.06)", borderRadius: "2px", overflow: "hidden" }}>
+                    <div style={{ width: `${vs.share}%`, height: "100%", backgroundColor: hhiColor }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Vendor concentration card */}
           <div className="card">
             <h2 style={{ fontSize: "1.2rem", marginBottom: "1rem" }}>Concentration Risk (Country)</h2>

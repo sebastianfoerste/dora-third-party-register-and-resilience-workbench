@@ -68,7 +68,9 @@ export async function POST(req: Request) {
     };
 
     const idxLE = getIndex("legalEntityName");
+    const idxLE_LEI = getIndex("legalEntityLei");
     const idxVendor = getIndex("vendorName");
+    const idxVendor_LEI = getIndex("vendorLei");
     const idxService = getIndex("serviceDescription");
     const idxFunction = getIndex("supportedFunction");
     const idxLocation = getIndex("location");
@@ -90,7 +92,9 @@ export async function POST(req: Request) {
     for (const row of dataRows) {
       try {
         const leName = row[idxLE] || "Unknown Entity";
+        const leLei = idxLE_LEI !== -1 ? (row[idxLE_LEI] || null) : null;
         const vendorName = row[idxVendor] || "Unknown Vendor";
+        const vendorLei = idxVendor_LEI !== -1 ? (row[idxVendor_LEI] || null) : null;
         const serviceDesc = row[idxService] || "No description provided.";
         const functionName = idxFunction !== -1 ? row[idxFunction] || "General Support" : "General Support";
         const location = idxLocation !== -1 ? row[idxLocation] || "EU" : "EU";
@@ -106,11 +110,17 @@ export async function POST(req: Request) {
           legalEntity = await prisma.legalEntity.create({
             data: {
               name: leName,
+              lei: leLei,
               jurisdiction: "DE", // Default to Germany
               licenceType: "CASP",
               competentAuthority: "BaFin",
               regulatedStatus: true,
             },
+          });
+        } else if (leLei && !legalEntity.lei) {
+          legalEntity = await prisma.legalEntity.update({
+            where: { id: legalEntity.id },
+            data: { lei: leLei },
           });
         }
 
@@ -122,10 +132,16 @@ export async function POST(req: Request) {
           vendor = await prisma.vendor.create({
             data: {
               legalName: vendorName,
+              lei: vendorLei,
               country: "DE", // Default
               serviceCategories: "Imported Service Category",
               concentrationTags: "Imported",
             },
+          });
+        } else if (vendorLei && !vendor.lei) {
+          vendor = await prisma.vendor.update({
+            where: { id: vendor.id },
+            data: { lei: vendorLei },
           });
         }
 

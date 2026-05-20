@@ -12,6 +12,11 @@ export interface ValidationResult {
   errors: ValidationError[];
 }
 
+export function validateLEI(lei: string | null): boolean {
+  if (!lei) return false;
+  return /^[A-Z0-9]{20}$/.test(lei.trim().toUpperCase());
+}
+
 export function validateRegisterEntry(data: {
   legalEntity: { name: string; lei: string | null; jurisdiction: string; licenceType: string };
   vendor: { legalName: string; country: string; lei: string | null };
@@ -55,6 +60,15 @@ export function validateRegisterEntry(data: {
       type: "DATA_GAP",
     });
     passedChecks -= 0.5;
+  } else if (!validateLEI(legalEntity.lei)) {
+    errors.push({
+      id: "le-lei-invalid",
+      field: "legalEntity.lei",
+      message: `Legal Entity (${legalEntity.name}) LEI (${legalEntity.lei}) is invalid. Must be exactly 20 uppercase alphanumeric characters under ISO 17442.`,
+      severity: "HIGH",
+      type: "DATA_GAP",
+    });
+    passedChecks -= 1.0;
   }
 
   // 2. Vendor Checks
@@ -67,6 +81,15 @@ export function validateRegisterEntry(data: {
       type: "DATA_GAP",
     });
     passedChecks -= 0.5;
+  } else if (!validateLEI(vendor.lei)) {
+    errors.push({
+      id: "vendor-lei-invalid",
+      field: "vendor.lei",
+      message: `Vendor (${vendor.legalName}) LEI (${vendor.lei}) is invalid. Must be exactly 20 uppercase alphanumeric characters under ISO 17442.`,
+      severity: "HIGH",
+      type: "DATA_GAP",
+    });
+    passedChecks -= 1.0;
   }
 
   // 3. Service Location
