@@ -533,6 +533,52 @@ async function main() {
     },
   });
 
+  console.log("Seeding Integration Settings...");
+  await prisma.integrationSetting.create({
+    data: {
+      systemType: "GRC",
+      name: "OneTrust GRC",
+      status: "DISCONNECTED",
+      endpointUrl: "https://api.onetrust.com/api/v1/grc",
+      authConfig: JSON.stringify({ clientId: "onetrust_oauth_client", scope: "grc.read grc.write" }),
+    },
+  });
+
+  await prisma.integrationSetting.create({
+    data: {
+      systemType: "PROCUREMENT",
+      name: "Ironclad CLM",
+      status: "DISCONNECTED",
+      endpointUrl: "https://api.ironcladapp.com/public/v1",
+      authConfig: JSON.stringify({ webhookUrl: "http://localhost:3000/api/integrations/procurement" }),
+    },
+  });
+
+  await prisma.integrationSetting.create({
+    data: {
+      systemType: "DMS",
+      name: "Google Drive Folder Sync",
+      status: "DISCONNECTED",
+      endpointUrl: "https://www.googleapis.com/drive/v3/files",
+      authConfig: JSON.stringify({ folderId: "dora_register_exports" }),
+    },
+  });
+
+  await prisma.integrationSetting.create({
+    data: {
+      systemType: "IAM",
+      name: "Okta IDP Mappings",
+      status: "DISCONNECTED",
+      endpointUrl: "https://okta.solaris-group.com",
+      authConfig: JSON.stringify({
+        groupMapping: [
+          { group: "Okta-DORA-CCO", role: "Compliance Lead" },
+          { group: "Okta-DORA-Auditors", role: "Auditor" }
+        ]
+      }),
+    },
+  });
+
   console.log("Database seeded successfully!");
 }
 

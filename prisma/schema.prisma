@@ -254,3 +254,25 @@ model ReviewCycle {
   notes            String?
   status           String        @default("COMPLETED")
 }
+
+model IntegrationSetting {
+  id           String   @id @default(uuid())
+  systemType   String   // GRC, PROCUREMENT, DMS, IAM
+  name         String   // OneTrust, Ironclad, GoogleDrive, Okta
+  status       String   // CONNECTED, DISCONNECTED, ERROR
+  endpointUrl  String?
+  authConfig   String?  // JSON string containing Client ID, Scope, secret token, etc.
+  lastSyncedAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model IntegrationSyncLog {
+  id           String   @id @default(uuid())
+  systemType   String
+  action       String   // IMPORT, EXPORT, SYNC_TEST
+  status       String   // SUCCESS, FAILED
+  details      String?  // Description or JSON output
+  recordsCount Int      @default(0)
+  timestamp    DateTime @default(now())
+}
