@@ -25,7 +25,23 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json({ success: true, tests, services });
+    const threatIntel = await prisma.threatIntel.findMany({
+      include: {
+        vendor: true,
+      },
+      orderBy: {
+        detectedAt: "desc",
+      },
+    });
+
+    const simulations = await prisma.simulationRun.findMany({
+      orderBy: {
+        testedAt: "desc",
+      },
+      take: 10,
+    });
+
+    return NextResponse.json({ success: true, tests, services, threatIntel, simulations });
   } catch (error: any) {
     console.error("GET resilience tests error:", error);
     return NextResponse.json({ error: "Failed to load resilience tests" }, { status: 500 });

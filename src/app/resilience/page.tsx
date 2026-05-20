@@ -6,6 +6,7 @@ interface Service {
   id: string;
   supportedFunction: string;
   vendor: {
+    id: string;
     legalName: string;
   };
   criticalityAssessments: Array<{ result: string }>;
@@ -23,21 +24,51 @@ interface ResilienceTest {
   service: Service;
 }
 
+interface ThreatIntel {
+  id: string;
+  vendorId: string;
+  cveId: string;
+  description: string;
+  severity: string; // HIGH, MEDIUM, LOW
+  status: string; // UNPATCHED, PATCHED
+  detectedAt: string;
+  vendor: {
+    legalName: string;
+  };
+}
+
+interface SimulationRun {
+  id: string;
+  scenarioName: string;
+  status: string; // COMPLETED, FAILED
+  survivability: number;
+  timelineLog: string; // JSON timeline
+  testedAt: string;
+}
+
 export default function ResiliencePage() {
   const [tests, setTests] = useState<ResilienceTest[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [threats, setThreats] = useState<ThreatIntel[]>([]);
+  const [simulations, setSimulations] = useState<SimulationRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  // Form State
+  // Form State for logging test
   const [serviceId, setServiceId] = useState("");
   const [testType, setTestType] = useState("VULNERABILITY_ASSESSMENT");
   const [testDate, setTestDate] = useState("");
   const [status, setStatus] = useState<"PASSED" | "FAILED" | "PENDING">("PASSED");
   const [findingsCount, setFindingsCount] = useState(0);
   const [evidenceSummary, setEvidenceSummary] = useState("");
+
+  // Simulator States
+  const [simulating, setSimulating] = useState(false);
+  const [simScenario, setSimScenario] = useState("ledger_aws_outage");
+  const [simServiceId, setSimServiceId] = useState("");
+  const [activeRunResult, setActiveRunResult] = useState<SimulationRun | null>(null);
 
   const loadData = async () => {
     try {
@@ -46,6 +77,13 @@ export default function ResiliencePage() {
       if (data.success) {
         setTests(data.tests);
         setServices(data.services);
+        setThreats(data.threatIntel || []);
+        setSimulations(data.simulations || []);
+        
+        // Auto-select first service for simulator if not set
+        if (data.services.length > 0 && !simServiceId) {
+          setSimServiceId(data.services[0].id);
+        }
       }
     } catch (err) {
       console.error("Failed to load resilience tests:", err);
@@ -101,6 +139,36 @@ export default function ResiliencePage() {
       setMessage("❌ Network error saving resilience test.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRunSimulation = async () => {
+    if (!simServiceId || !simScenario) return;
+    setSimulating(true);
+    setActiveRunResult(null);
+
+    try {
+      const res = await fetch("/api/resilience/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scenarioKey: simScenario,
+          serviceId: simServiceId,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setActiveRunResult(data.run);
+        await loadData(); // Refresh history
+      } else {
+        alert("Failed to run simulation: " + data.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error invoking simulation engine.");
+    } finally {
+      setSimulating(false);
     }
   };
 
@@ -165,7 +233,7 @@ export default function ResiliencePage() {
         <div>
           <h1 className="page-title">Resilience & Security Testing Hub</h1>
           <p className="page-subtitle">
-            Log and review vulnerability scans, penetration tests, and disaster recovery drills. Fulfills DORA Article 24 resilience evidence tracking.
+            Execute stress simulations, track active vulnerability threat feeds, and record Article 24 test compliance logs.
           </p>
         </div>
         {!showForm && (
@@ -346,77 +414,296 @@ export default function ResiliencePage() {
         </div>
       ) : null}
 
-      {/* Timeline of tests */}
-      <div className="card">
-        <h2 style={{ fontSize: "1.1rem", marginBottom: "1.25rem" }}>Logged Resilience Evidence Timeline</h2>
-        {tests.length === 0 ? (
-          <div style={{ textAlign: "center", color: "var(--text-muted)", padding: "2rem" }}>
-            No resilience test evidence recorded.
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            {tests.map((test) => {
-              let outcomeBadge = "badge info";
-              if (test.status === "PASSED") outcomeBadge = "badge success";
-              else if (test.status === "FAILED") outcomeBadge = "badge danger";
+      {/* Main split work space layout */}
+      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "2rem", alignItems: "start" }}>
+        
+        {/* Left Side: Test Timelines & Simulation History */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+          
+          {/* Timeline of tests */}
+          <div className="card">
+            <h2 style={{ fontSize: "1.1rem", marginBottom: "1.25rem" }}>Logged Resilience Evidence Timeline</h2>
+            {tests.length === 0 ? (
+              <div style={{ textAlign: "center", color: "var(--text-muted)", padding: "2rem" }}>
+                No resilience test evidence recorded.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                {tests.map((test) => {
+                  let outcomeBadge = "badge info";
+                  if (test.status === "PASSED") outcomeBadge = "badge success";
+                  else if (test.status === "FAILED") outcomeBadge = "badge danger";
 
-              return (
-                <div
-                  key={test.id}
-                  style={{
-                    padding: "1rem",
-                    borderRadius: "6px",
-                    backgroundColor: "rgba(22, 28, 41, 0.2)",
-                    border: "1px solid var(--border-color)",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    gap: "1.5rem",
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <span className={outcomeBadge} style={{ fontSize: "0.65rem", fontWeight: 700 }}>
-                        {test.status}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                        {new Date(test.testDate).toLocaleDateString()}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--color-brand)" }}>
-                        {test.testType.replace(/_/g, " ")}
+                  return (
+                    <div
+                      key={test.id}
+                      style={{
+                        padding: "1rem",
+                        borderRadius: "6px",
+                        backgroundColor: "rgba(22, 28, 41, 0.2)",
+                        border: "1px solid var(--border-color)",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        gap: "1.5rem",
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                          <span className={outcomeBadge} style={{ fontSize: "0.65rem", fontWeight: 700 }}>
+                            {test.status}
+                          </span>
+                          <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                            {new Date(test.testDate).toLocaleDateString()}
+                          </span>
+                          <span style={{ fontSize: "0.75rem", color: "var(--color-brand)" }}>
+                            {test.testType.replace(/_/g, " ")}
+                          </span>
+                        </div>
+                        <h3 style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--text-primary)", marginTop: "0.3rem" }}>
+                          {test.service.supportedFunction} &middot; <span style={{ color: "var(--text-secondary)" }}>{test.service.vendor.legalName}</span>
+                        </h3>
+                        <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: "0.4rem 0 0 0", lineHeight: "1.4" }}>
+                          {test.evidenceSummary}
+                        </p>
+                      </div>
+                      <div style={{ textAlign: "right", fontSize: "0.75rem", color: "var(--text-muted)", minWidth: "120px" }}>
+                        <div>Findings: <strong>{test.findingsCount} Vulnerabilities</strong></div>
+                        {test.nextScheduledDate && (
+                          <div style={{ marginTop: "0.2rem" }}>
+                            Next scan: <strong>{new Date(test.nextScheduledDate).toLocaleDateString()}</strong>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Simulation Runs History */}
+          <div className="card">
+            <h2 style={{ fontSize: "1.1rem", marginBottom: "1.25rem" }}>Scenario Simulation Run Logs</h2>
+            {simulations.length === 0 ? (
+              <div style={{ textAlign: "center", color: "var(--text-muted)", padding: "2rem" }}>
+                No scenario simulations executed yet.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                {simulations.map((sim) => (
+                  <div
+                    key={sim.id}
+                    style={{
+                      padding: "0.85rem 1rem",
+                      borderRadius: "6px",
+                      border: "1px solid rgba(255, 255, 255, 0.04)",
+                      backgroundColor: "rgba(3, 5, 9, 0.2)",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center"
+                    }}
+                  >
+                    <div>
+                      <strong style={{ fontSize: "0.85rem", color: "var(--text-primary)" }}>{sim.scenarioName}</strong>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "0.75rem" }}>
+                        {new Date(sim.testedAt).toLocaleDateString()}
                       </span>
                     </div>
-                    <h3 style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--text-primary)", marginTop: "0.3rem" }}>
-                      {test.service.supportedFunction} &middot; <span style={{ color: "var(--text-secondary)" }}>{test.service.vendor.legalName}</span>
-                    </h3>
-                    <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: "0.4rem 0 0 0", lineHeight: "1.4" }}>
-                      {test.evidenceSummary}
-                    </p>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                      <span className={`badge ${sim.status === "COMPLETED" ? "success" : "danger"}`} style={{ fontSize: "0.65rem" }}>
+                        {sim.status}
+                      </span>
+                      <span style={{ fontSize: "0.85rem", fontWeight: 700, color: sim.survivability >= 60 ? "var(--color-brand)" : "var(--color-error)" }}>
+                        {sim.survivability}% Survivability
+                      </span>
+                    </div>
                   </div>
-                  <div style={{ textAlign: "right", fontSize: "0.75rem", color: "var(--text-muted)", minWidth: "120px" }}>
-                    <div>Findings: <strong>{test.findingsCount} Vulnerabilities</strong></div>
-                    {test.nextScheduledDate && (
-                      <div style={{ marginTop: "0.2rem" }}>
-                        Next scan: <strong>{new Date(test.nextScheduledDate).toLocaleDateString()}</strong>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Right Side: Scenario Simulator & Active Threat Feed */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+          
+          {/* Active DR Simulator Widget */}
+          <div className="card" style={{ borderTop: "2px solid var(--color-brand)" }}>
+            <h2 style={{ fontSize: "1.1rem", marginBottom: "0.5rem" }}>Resilience Scenario Simulator</h2>
+            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "1.25rem" }}>
+              Run simulated system disruptions to stress-test exit strategies and SLA response frameworks.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.5rem" }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Select Drill Scenario</label>
+                <select
+                  className="form-control"
+                  value={simScenario}
+                  onChange={(e) => setSimScenario(e.target.value)}
+                >
+                  <option value="ledger_aws_outage">Cloud Host Region Outage (Frankfurt)</option>
+                  <option value="kyc_subprocessor_leak">Subcontractor Data Leak (US/UK)</option>
+                  <option value="general_ddos">Distributed Denial of Service (DDoS) Attack</option>
+                </select>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Target Regulated Service</label>
+                <select
+                  className="form-control"
+                  value={simServiceId}
+                  onChange={(e) => setSimServiceId(e.target.value)}
+                >
+                  {services.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.supportedFunction} ({s.vendor.legalName})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                className="btn btn-primary"
+                onClick={handleRunSimulation}
+                disabled={simulating || !simServiceId}
+                style={{ marginTop: "0.5rem" }}
+              >
+                {simulating ? "Executing Stress Scenario..." : "⚡ Execute Resilience Scenario"}
+              </button>
+            </div>
+
+            {/* Simulation live/terminal log */}
+            {simulating && (
+              <div style={{ textAlign: "center", padding: "1.5rem", backgroundColor: "rgba(0,0,0,0.3)", borderRadius: "6px" }}>
+                <div className="spinner" style={{ margin: "0 auto 1rem auto" }} />
+                <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)", animation: "pulse 1.2s infinite" }}>
+                  Calculating contractual limits, residency parameters, and fallback timelines...
+                </span>
+              </div>
+            )}
+
+            {activeRunResult && (
+              <div
+                style={{
+                  backgroundColor: "rgba(4, 6, 10, 0.75)",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: "6px",
+                  padding: "1rem",
+                  animation: "slideUp 0.3s ease-out"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "0.5rem" }}>
+                  <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)" }}>Simulation Result</span>
+                  <span
+                    style={{
+                      fontSize: "0.85rem",
+                      fontWeight: 700,
+                      color: activeRunResult.survivability >= 60 ? "var(--color-brand)" : "var(--color-error)"
+                    }}
+                  >
+                    {activeRunResult.survivability}% Survivability
+                  </span>
+                </div>
+
+                {/* Timeline display */}
+                <div
+                  style={{
+                    maxHeight: "220px",
+                    overflowY: "auto",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.6rem",
+                    fontFamily: "monospace",
+                    fontSize: "0.75rem",
+                    lineHeight: "1.4",
+                    color: "var(--text-secondary)"
+                  }}
+                >
+                  {JSON.parse(activeRunResult.timelineLog).map((t: any, idx: number) => {
+                    let color = "var(--text-secondary)";
+                    if (t.status === "success") color = "var(--color-brand)";
+                    else if (t.status === "error") color = "var(--color-error)";
+                    else if (t.status === "warning") color = "var(--color-warning)";
+
+                    return (
+                      <div key={idx} style={{ display: "flex", gap: "0.5rem" }}>
+                        <span style={{ color: "var(--text-muted)", flexShrink: 0 }}>[{t.time}]</span>
+                        <span style={{ color }}>{t.event}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Active Threat Intelligence Feed Widget */}
+          <div className="card" style={{ borderLeft: threats.some(t => t.status === "UNPATCHED") ? "4px solid var(--color-error)" : "4px solid var(--color-brand)" }}>
+            <h2 style={{ fontSize: "1.1rem", marginBottom: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span className="pulse-red" style={{ backgroundColor: threats.some(t => t.status === "UNPATCHED") ? "var(--color-error)" : "var(--color-brand)" }} />
+              Active Threat Feed
+            </h2>
+            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "1.25rem" }}>
+              Live security alerts and newly discovered CVE vulnerabilities linked to the software stacks of registered ICT vendors.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              {threats.map((threat) => (
+                <div
+                  key={threat.id}
+                  style={{
+                    padding: "0.8rem",
+                    borderRadius: "6px",
+                    backgroundColor: "rgba(22, 28, 41, 0.15)",
+                    border: "1px solid var(--border-color)",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                    <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-primary)", fontFamily: "monospace" }}>
+                      {threat.cveId}
+                    </span>
+                    <span className={`badge ${threat.status === "UNPATCHED" ? "danger" : "success"}`} style={{ fontSize: "0.6rem" }}>
+                      {threat.status}
+                    </span>
+                  </div>
+                  <strong style={{ fontSize: "0.75rem", color: "var(--color-brand)", display: "block", marginBottom: "0.2rem" }}>
+                    {threat.vendor.legalName} Tech Stack
+                  </strong>
+                  <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", margin: 0, lineHeight: "1.3" }}>
+                    {threat.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
       </div>
-      
+
       {/* Pulsing Dot style */}
       <style jsx global>{`
         .pulse-red {
           width: 8px;
           height: 8px;
-          background: var(--color-error);
           border-radius: 50%;
           box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
           animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+          0% {
+            transform: scale(0.9);
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+          }
+          70% {
+            transform: scale(1.1);
+            box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+          }
+          100% {
+            transform: scale(0.9);
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+          }
         }
       `}</style>
     </div>

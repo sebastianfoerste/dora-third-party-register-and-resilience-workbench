@@ -37,6 +37,7 @@ model Vendor {
   services          ICTService[]
   contracts         Contract[]
   registerEntries   RegisterEntry[]
+  threatIntel       ThreatIntel[]
 }
 
 model ICTService {
@@ -275,4 +276,25 @@ model IntegrationSyncLog {
   details      String?  // Description or JSON output
   recordsCount Int      @default(0)
   timestamp    DateTime @default(now())
+}
+
+model ThreatIntel {
+  id          String   @id @default(uuid())
+  vendorId    String
+  cveId       String   // e.g., CVE-2026-1234
+  description String
+  severity    String   // HIGH, MEDIUM, LOW
+  status      String   // UNPATCHED, PATCHED
+  detectedAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+}
+
+model SimulationRun {
+  id           String   @id @default(uuid())
+  scenarioName String   // e.g., "Ledger AWS Outage"
+  status       String   // COMPLETED, FAILED
+  survivability Int      // Score 0-100
+  timelineLog  String   // JSON log of simulated events
+  testedAt     DateTime @default(now())
 }

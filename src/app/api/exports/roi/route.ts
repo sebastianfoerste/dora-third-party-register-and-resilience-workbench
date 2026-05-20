@@ -1,141 +1,60 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import fs from "fs";
-import path from "path";
 
-export async function POST(req: Request) {
+export const revalidate = 0;
+
+export async function GET() {
   try {
-    const body = await req.json();
-    const { entityScope, exportFormat } = body; // entityScope can be "CONSOLIDATED" or a specific legalEntityId
+    const contractsCount = await prisma.contract.count();
+    const vendorsCount = await prisma.vendor.count();
 
-    if (!entityScope || !exportFormat) {
-      return NextResponse.json({ error: "entityScope and exportFormat are required." }, { status: 400 });
-    }
+    // Calculate open vs resolved findings
+    const findings = await prisma.clauseFinding.findMany();
+    const openGapsCount = findings.filter(f => f.status === "MISSING" || f.status === "PARTIAL").length;
+    const resolvedGapsCount = findings.filter(f => f.status === "PRESENT" && f.reviewerDecision === "RESOLVED_BY_REMEDIATION").length;
+    const compliantCount = findings.filter(f => f.status === "PRESENT" && f.reviewerDecision !== "RESOLVED_BY_REMEDIATION").length;
 
-    // Determine query filter
-    const filter: any = {};
-    let scopeName = "Consolidated Register";
-    if (entityScope !== "CONSOLIDATED") {
-      filter.legalEntityId = entityScope;
-      const le = await prisma.legalEntity.findUnique({ where: { id: entityScope } });
-      if (le) scopeName = `${le.name} Register`;
-    }
+    // Financial ROI assumptions
+    const auditHoursPerContractManual = 40;
+    const auditHoursPerContractPlatform = 2;
+    const hourlyRateEur = 150; // Average CCO/Legal Counsel internal rate
 
-    // Fetch entries
-    const entries = await prisma.registerEntry.findMany({
-      where: filter,
-      include: {
-        legalEntity: true,
-        vendor: true,
-        service: true,
-        contract: true,
-      },
-    });
+    const hoursSaved = contractsCount * (auditHoursPerContractManual - auditHoursPerContractPlatform);
+    const costSavedEur = hoursSaved * hourlyRateEur;
 
-    // Compile warnings
-    const warnings: string[] = [];
-    const csvRows: string[][] = [
-      [
-        "Entity Name",
-        "Entity LEI",
-        "Jurisdiction",
-        "Licence Type",
-        "Competent Authority",
-        "Vendor Name",
-        "Vendor LEI",
-        "Vendor Country",
-        "ICT Service Description",
-        "Supported Function",
-        "Data Location",
-        "Subcontracting Status",
-        "Substitutability",
-        "Exit Plan Status",
-        "Criticality",
-        "Validation Status",
-      ],
-    ];
+    // DORA Non-compliance fine exposure risk
+    // 1% of daily global turnover. We assume group annual turnover of €365,000,000 (€1,000,000 daily turnover)
+    const dailyGlobalTurnoverEur = 1000000;
+    const maxDailyFinePenaltyEur = dailyGlobalTurnoverEur * 0.01; // €10,000 per day
 
-    for (const entry of entries) {
-      // Collect warnings
-      if (entry.validationErrors) {
-        try {
-          const errors = JSON.parse(entry.validationErrors);
-          errors.forEach((err: string) => {
-            warnings.push(`[${entry.vendor.legalName} - ${entry.service.supportedFunction}]: ${err}`);
-          });
-        } catch (_) {}
-      }
+    // Total daily fine exposure based on open compliance gaps
+    const activeDailyExposureEur = openGapsCount * maxDailyFinePenaltyEur;
 
-      // Add to CSV
-      csvRows.push([
-        entry.legalEntity.name,
-        entry.legalEntity.lei || "N/A",
-        entry.legalEntity.jurisdiction,
-        entry.legalEntity.licenceType,
-        entry.legalEntity.competentAuthority,
-        entry.vendor.legalName,
-        entry.vendor.lei || "N/A",
-        entry.vendor.country,
-        entry.service.serviceDescription.replace(/"/g, '""'),
-        entry.service.supportedFunction,
-        entry.service.location,
-        entry.service.subcontractingStatus,
-        entry.service.substitutability,
-        entry.service.exitPlanStatus,
-        entry.criticality,
-        entry.validationStatus,
-      ]);
-    }
-
-    // Convert to CSV String
-    const csvContent = csvRows
-      .map((row) => row.map((cell) => `"${cell}"`).join(","))
-      .join("\n");
-
-    // Ensure exports directory exists in public
-    const publicExportsDir = path.join(process.cwd(), "public", "exports");
-    if (!fs.existsSync(publicExportsDir)) {
-      fs.mkdirSync(publicExportsDir, { recursive: true });
-    }
-
-    const filename = `dora_register_${entityScope}_${Date.now()}.csv`;
-    const filepath = path.join(publicExportsDir, filename);
-    fs.writeFileSync(filepath, csvContent);
-
-    // Save Export Record in DB
-    const roiExport = await prisma.roIExport.create({
-      data: {
-        entityScope: scopeName,
-        exportFormat: exportFormat.toUpperCase(),
-        generatedFiles: JSON.stringify([`/exports/${filename}`]),
-        validationWarnings: JSON.stringify(warnings),
-      },
-    });
-
-    // Write audit log
-    await prisma.auditLog.create({
-      data: {
-        actor: "Compliance Lead",
-        action: "GENERATE_EXPORT",
-        object: `RoIExport:${roiExport.id}`,
-        afterSnapshot: JSON.stringify({ entriesCount: entries.length, warningsCount: warnings.length }),
-      },
-    });
+    // Risk reduction percentage
+    const totalGaps = openGapsCount + resolvedGapsCount;
+    const riskReductionRate = totalGaps > 0 ? Math.round((resolvedGapsCount / totalGaps) * 100) : 100;
 
     return NextResponse.json({
       success: true,
-      export: {
-        id: roiExport.id,
-        entityScope: roiExport.entityScope,
-        exportFormat: roiExport.exportFormat,
-        generatedFiles: [`/exports/${filename}`],
-        warningsCount: warnings.length,
-        warnings,
-        createdAt: roiExport.createdAt,
-      },
+      metrics: {
+        vendorsCount,
+        contractsCount,
+        openGapsCount,
+        resolvedGapsCount,
+        compliantCount,
+        hoursSaved,
+        costSavedEur,
+        activeDailyExposureEur,
+        maxDailyFinePenaltyEur,
+        riskReductionRate,
+        assumptions: {
+          hourlyRateEur,
+          dailyGlobalTurnoverEur,
+        }
+      }
     });
-  } catch (error: any) {
-    console.error("Export creation error:", error);
-    return NextResponse.json({ error: "Server error during export compilation" }, { status: 500 });
+  } catch (error) {
+    console.error("GET ROI metrics error:", error);
+    return NextResponse.json({ error: "Failed to calculate compliance ROI metrics" }, { status: 500 });
   }
 }

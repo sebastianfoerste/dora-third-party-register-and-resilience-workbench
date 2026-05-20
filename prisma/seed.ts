@@ -579,6 +579,56 @@ async function main() {
     },
   });
 
+  console.log("Seeding Threat Intelligence Alerts...");
+  await prisma.threatIntel.create({
+    data: {
+      vendorId: aws.id,
+      cveId: "CVE-2026-3392",
+      description: "OpenSSL remote buffer overflow vulnerability detected in AWS EC2 Ubuntu base images. Risk of unauthorized remote code execution.",
+      severity: "HIGH",
+      status: "UNPATCHED",
+    },
+  });
+
+  await prisma.threatIntel.create({
+    data: {
+      vendorId: fb.id,
+      cveId: "CVE-2026-8821",
+      description: "ECDSA signature validation bypass vulnerability detected in Fireblocks wallet core API package. Patched in v4.12.2.",
+      severity: "HIGH",
+      status: "PATCHED",
+    },
+  });
+
+  console.log("Seeding Scenario Simulations...");
+  await prisma.simulationRun.create({
+    data: {
+      scenarioName: "Ledger AWS Outage Drill",
+      status: "COMPLETED",
+      survivability: 85,
+      timelineLog: JSON.stringify([
+        { time: "00:00", event: "Initiated AWS Central Frankfurt availability zone outage simulation." },
+        { time: "00:15", event: "Service Level Agreement (SLA) triggered alert; uptime dropped below threshold." },
+        { time: "00:30", event: "Exit strategy evaluated: alternative vendor Google Cloud Storage validated." },
+        { time: "01:00", event: "Simulated recovery successfully executed via backup hot-standby nodes. Uptime restored." }
+      ]),
+    },
+  });
+
+  await prisma.simulationRun.create({
+    data: {
+      scenarioName: "Subcontractor Data Leakage Drill",
+      status: "FAILED",
+      survivability: 45,
+      timelineLog: JSON.stringify([
+        { time: "00:00", event: "Initiated simulated leak of personal KYC data from subcontractor in non-EEA jurisdiction." },
+        { time: "00:10", event: "Governing law check failed: Contract governs US jurisdiction, raising liability concerns." },
+        { time: "00:25", event: "Exit strategy check: No approved exit plan exists for the KYC Integration service." },
+        { time: "00:45", event: "Drill terminated. High-Severity risk flagged due to unapproved exit plans and non-EEA data residency." }
+      ]),
+    },
+  });
+
   console.log("Database seeded successfully!");
 }
 
