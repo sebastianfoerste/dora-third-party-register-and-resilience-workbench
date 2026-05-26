@@ -35,6 +35,15 @@ interface ServiceItem {
   subcontractors: Subcontractor[];
 }
 
+interface ThreatIntelItem {
+  id: string;
+  cveId: string;
+  description: string;
+  severity: string;
+  status: string;
+  detectedAt: string;
+}
+
 interface VendorDetail {
   id: string;
   legalName: string;
@@ -44,6 +53,7 @@ interface VendorDetail {
   serviceCategories: string | null;
   concentrationTags: string | null;
   services: ServiceItem[];
+  threatIntel: ThreatIntelItem[];
 }
 
 interface Props {
@@ -219,6 +229,59 @@ export default function VendorProfile({ vendor }: Props) {
                   )) || <span style={{ color: "var(--text-muted)" }}>None</span>}
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Active CVE Security Alerts */}
+          <div className="card">
+            <h2 style={{ fontSize: "1.2rem", marginBottom: "1rem" }}>Security Intel Feed</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              {vendor.threatIntel && vendor.threatIntel.length > 0 ? (
+                vendor.threatIntel.map((threat) => {
+                  let sevColor = "var(--text-muted)";
+                  if (threat.severity === "HIGH") sevColor = "var(--color-error)";
+                  else if (threat.severity === "MEDIUM") sevColor = "var(--color-warning)";
+
+                  const isUnpatched = threat.status === "UNPATCHED";
+
+                  return (
+                    <div
+                      key={threat.id}
+                      style={{
+                        padding: "0.75rem",
+                        borderRadius: "6px",
+                        backgroundColor: "rgba(0,0,0,0.15)",
+                        border: isUnpatched ? `1px solid ${sevColor}33` : "1px solid var(--border-color)",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.35rem" }}>
+                        <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary)" }}>{threat.cveId}</span>
+                        <span
+                          className={`badge ${threat.severity === "HIGH" ? "danger" : threat.severity === "MEDIUM" ? "warning" : "non-critical"}`}
+                          style={{ fontSize: "0.65rem" }}
+                        >
+                          {threat.severity}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", margin: "0 0 0.5rem 0", lineHeight: "1.3" }}>
+                        {threat.description}
+                      </p>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.7rem" }}>
+                        <span style={{ color: isUnpatched ? "var(--color-error)" : "var(--color-brand)", fontWeight: 600 }}>
+                          {isUnpatched ? "⚠️ UNPATCHED" : "✓ PATCHED"}
+                        </span>
+                        <span style={{ color: "var(--text-muted)" }}>
+                          {new Date(threat.detectedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ textAlign: "center", padding: "1.5rem", color: "var(--text-muted)", fontSize: "0.8rem" }}>
+                  ✓ No security threats or active CVE alerts recorded for this provider.
+                </div>
+              )}
             </div>
           </div>
         </div>

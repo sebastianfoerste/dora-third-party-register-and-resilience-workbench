@@ -23,6 +23,9 @@ export default async function VendorDetailPage({ params }: RouteParams) {
           subcontractors: true,
         },
       },
+      threatIntel: {
+        orderBy: { detectedAt: "desc" },
+      },
     },
   });
 
