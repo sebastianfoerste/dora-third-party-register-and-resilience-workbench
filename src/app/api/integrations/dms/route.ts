@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { mkdir, copyFile } from "fs/promises";
+import path from "path";
 
 export async function POST() {
   try {
@@ -28,9 +30,6 @@ export async function POST() {
       });
     }
 
-    // Simulate network delay for uploading files
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-
     // Gather file names
     const filesToSync: string[] = [];
     exports.forEach((exp) => {
@@ -44,40 +43,63 @@ export async function POST() {
       }
     });
 
-    // 3. Update last synced time
+    // 3. Perform real file sync to local mock_dms_storage directory
+    let auth = { folderId: "" };
+    try {
+      if (dmsSetting.authConfig) auth = JSON.parse(dmsSetting.authConfig);
+    } catch (_) {}
+    const folderId = auth.folderId || "dora_register_exports";
+
+    const copiedFiles: string[] = [];
+    for (const filePath of filesToSync) {
+      try {
+        const sourceFilename = path.basename(filePath);
+        const sourcePath = path.join(process.cwd(), "public", "exports", sourceFilename);
+        const targetDir = path.join(process.cwd(), "mock_dms_storage", folderId);
+        await mkdir(targetDir, { recursive: true });
+        const targetPath = path.join(targetDir, sourceFilename);
+        await copyFile(sourcePath, targetPath);
+        copiedFiles.push(sourceFilename);
+      } catch (err: any) {
+        console.warn(`Could not copy export file ${filePath}:`, err.message);
+      }
+    }
+
+    // 4. Update last synced time
     await prisma.integrationSetting.update({
       where: { id: dmsSetting.id },
       data: { lastSyncedAt: new Date() },
     });
 
-    // 4. Log the sync event
+    // 5. Log the sync event
     await prisma.integrationSyncLog.create({
       data: {
         systemType: "DMS",
         action: "EXPORT",
         status: "SUCCESS",
-        details: `Successfully uploaded ${filesToSync.length} compliance documents to ${dmsSetting.name} folder ID '${JSON.parse(dmsSetting.authConfig || "{}").folderId || "dora_register_exports"}'. Files: ${filesToSync.join(", ")}`,
-        recordsCount: filesToSync.length,
+        details: `Successfully copied ${copiedFiles.length} compliance files to local mock storage folder 'mock_dms_storage/${folderId}'. Files: ${copiedFiles.join(", ")}`,
+        recordsCount: copiedFiles.length,
       },
     });
 
-    // 5. Write audit log
+    // 6. Write audit log
     await prisma.auditLog.create({
       data: {
         actor: "Compliance Lead",
         action: "SYNC_DMS_FILES",
         object: `Integration:${dmsSetting.name}`,
-        afterSnapshot: JSON.stringify({ syncedFiles: filesToSync }),
+        afterSnapshot: JSON.stringify({ syncedFiles: copiedFiles, folderId }),
       },
     });
 
     return NextResponse.json({
       success: true,
-      filesSynced: filesToSync,
-      folderId: JSON.parse(dmsSetting.authConfig || "{}").folderId || "dora_register_exports"
+      filesSynced: copiedFiles,
+      folderId
     });
   } catch (error: any) {
     console.error("DMS sync error:", error);
     return NextResponse.json({ error: "Server error during DMS upload sync" }, { status: 500 });
   }
 }
+

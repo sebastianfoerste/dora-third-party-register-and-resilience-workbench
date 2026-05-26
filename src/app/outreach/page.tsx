@@ -147,21 +147,20 @@ Solaris SE / Bitpanda Custody`;
   const handleMarkAsSent = async () => {
     if (!selectedVendor) return;
     try {
-      // Log an audit record
-      await fetch("/api/incidents", { // Re-using a post or logging via custom client actions
+      const res = await fetch("/api/outreach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          serviceId: selectedVendor.services[0]?.id || "",
-          title: `Vendor Outreach Initiated: ${selectedVendor.legalName}`,
-          severity: "MINOR",
-          description: `Logged outreach request to remediate ${getMissingClauses(selectedVendor).length} contract gaps under DORA Art. 30.`,
-          status: "RESOLVED",
-          remediationAction: "Draft communication generated and sent to vendor contact.",
+          vendorId: selectedVendor.id,
         }),
       });
 
-      setSentStatus(true);
+      const data = await res.json();
+      if (data.success) {
+        setSentStatus(true);
+      } else {
+        alert(data.error || "Failed to process outreach.");
+      }
     } catch (e) {
       console.error("Failed to mark outreach as sent:", e);
     }

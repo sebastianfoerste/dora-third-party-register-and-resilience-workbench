@@ -7,6 +7,7 @@ export default function SettingsPage() {
     enforce_eea_data_residency: "true",
     enforce_eu_governing_law: "true",
     enforce_exit_plan_for_critical_services: "true",
+    sla_max_downtime_minutes: "120",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -155,6 +156,26 @@ export default function SettingsPage() {
             <option value="true">Enforced</option>
             <option value="false">Disabled</option>
           </select>
+        </div>
+
+        <hr style={{ border: "0.5px solid var(--border-color)", margin: 0, opacity: 0.5 }} />
+
+        {/* 4. SLA Cumulative Downtime Threshold */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "2rem" }}>
+          <div style={{ flex: 1 }}>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: 600, margin: "0 0 0.25rem 0" }}>SLA Downtime Limit (Minutes)</h3>
+            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: 0, lineHeight: "1.4" }}>
+              Define the maximum allowable cumulative outage downtime in minutes for any ICT service. Exceeding this threshold triggers high-risk SLA warnings in the cockpit dashboard.
+            </p>
+          </div>
+          <input
+            type="number"
+            className="form-control"
+            style={{ width: "130px", flexShrink: 0 }}
+            min="0"
+            value={settings.sla_max_downtime_minutes || "120"}
+            onChange={(e) => handleChange("sla_max_downtime_minutes", e.target.value)}
+          />
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>

@@ -53,12 +53,31 @@ export default async function DashboardPage(props: { searchParams: Promise<{ ent
     },
   });
 
+  const incidents = await prisma.incidentLog.findMany({
+    where: {
+      ...(entityFilter !== "all"
+        ? {
+            service: {
+              legalEntityId: entityFilter,
+            },
+          }
+        : {}),
+    },
+  });
+
+  const cumulativeDowntimeByService: Record<string, number> = {};
+  incidents.forEach((inc) => {
+    cumulativeDowntimeByService[inc.serviceId] = (cumulativeDowntimeByService[inc.serviceId] || 0) + inc.downtimeMinutes;
+  });
+
   // Load active policy settings from DB
   const dbSettings = await prisma.policySetting.findMany();
   const settingsMap: Record<string, string> = {};
   dbSettings.forEach((s) => {
     settingsMap[s.key] = s.value;
   });
+
+  const slaMaxDowntimeMinutes = parseInt(settingsMap["sla_max_downtime_minutes"] || "120", 10);
 
   const options = {
     enforceEEADataResidency: settingsMap["enforce_eea_data_residency"] === "true",
@@ -110,6 +129,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ ent
       score: valResult.score,
       status: valResult.status,
       errorsCount: valResult.errors.length,
+      downtime: cumulativeDowntimeByService[entry.service.id] || 0,
     });
   }
 
@@ -172,12 +192,78 @@ export default async function DashboardPage(props: { searchParams: Promise<{ ent
     take: 5,
   });
 
+  const breachedServices = serviceSummaries
+    .filter((s) => s.downtime > slaMaxDowntimeMinutes)
+    .map((s) => ({
+      id: s.id,
+      supportedFunction: s.supportedFunction,
+      vendorName: s.vendorName,
+      downtime: s.downtime,
+    }));
+
   return (
     <div>
       <div className="page-header">
         <h1 className="page-title">Operational Resilience Cockpit</h1>
         <p className="page-subtitle">CASP & EMI Digital Operational Resilience Act (DORA) Compliance Summary</p>
       </div>
+
+      {/* SLA Breach Warning Banner */}
+      {breachedServices.length > 0 && (
+        <div
+          style={{
+            background: "rgba(255, 0, 85, 0.07)",
+            border: "1px solid rgba(255, 0, 85, 0.25)",
+            borderRadius: "var(--radius-md)",
+            padding: "1.25rem 1.5rem",
+            marginBottom: "2rem",
+            boxShadow: "0 0 15px rgba(255, 0, 85, 0.05)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem" }}>
+            <span
+              style={{
+                display: "inline-block",
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                backgroundColor: "var(--color-error)",
+                boxShadow: "0 0 8px var(--color-error)",
+              }}
+            />
+            <strong style={{ color: "var(--color-error)", fontSize: "0.95rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              SLA Breach Warning &mdash; BaFin / ESMA Exposure Alert
+            </strong>
+          </div>
+          <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: "0 0 1rem 0", lineHeight: "1.4" }}>
+            The following critical third-party ICT service(s) have exceeded the institutional SLA downtime limit of{" "}
+            <strong>{slaMaxDowntimeMinutes} minutes</strong>. Continued outage rates pose operational compliance exposure.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {breachedServices.map((bs) => (
+              <div
+                key={bs.id}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "0.6rem 0.8rem",
+                  borderRadius: "4px",
+                  backgroundColor: "rgba(255, 0, 85, 0.03)",
+                  border: "1px solid rgba(255, 0, 85, 0.1)",
+                }}
+              >
+                <span style={{ fontSize: "0.8rem", fontWeight: 500 }}>
+                  {bs.vendorName} &mdash; <strong>{bs.supportedFunction}</strong>
+                </span>
+                <span style={{ fontSize: "0.8rem", color: "var(--color-error)", fontWeight: 600 }}>
+                  {bs.downtime} min cumulative downtime
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Metrics Row */}
       <div className="metrics-grid">
@@ -247,7 +333,14 @@ export default async function DashboardPage(props: { searchParams: Promise<{ ent
                   <tr key={s.id}>
                     <td>
                       <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>{s.supportedFunction}</div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.15rem" }}>Scope of register</div>
+                      {s.downtime > 0 ? (
+                        <div style={{ fontSize: "0.75rem", color: s.downtime > slaMaxDowntimeMinutes ? "var(--color-error)" : "var(--text-muted)", marginTop: "0.15rem", fontWeight: s.downtime > slaMaxDowntimeMinutes ? 600 : 400 }}>
+                          {s.downtime > slaMaxDowntimeMinutes ? "⚠ SLA BREACHED: " : ""}
+                          {s.downtime} min cumulative downtime
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.15rem" }}>Scope of register</div>
+                      )}
                     </td>
                     <td>{s.vendorName}</td>
                     <td>

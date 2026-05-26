@@ -70,6 +70,110 @@ export default function ResiliencePage() {
   const [simServiceId, setSimServiceId] = useState("");
   const [activeRunResult, setActiveRunResult] = useState<SimulationRun | null>(null);
 
+  // SBOM Scanner States
+  const [sbomInput, setSbomInput] = useState("");
+  const [sbomScanResults, setSbomScanResults] = useState<Array<{ depName: string; version: string; threat: ThreatIntel }>>([]);
+  const [sbomScanRan, setSbomScanRan] = useState(false);
+  const [sbomErrors, setSbomErrors] = useState<string | null>(null);
+  const [createdTasks, setCreatedTasks] = useState<Record<string, boolean>>({});
+
+  // Threat Ingestion Form States
+  const [showThreatForm, setShowThreatForm] = useState(false);
+  const [ingestVendorId, setIngestVendorId] = useState("");
+  const [ingestCveId, setIngestCveId] = useState("");
+  const [ingestDesc, setIngestDesc] = useState("");
+  const [ingestSeverity, setIngestSeverity] = useState("HIGH");
+  const [ingestStatus, setIngestStatus] = useState("UNPATCHED");
+  const [ingestSaving, setIngestSaving] = useState(false);
+
+  const handleIngestThreat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const activeVendorId = ingestVendorId || (services[0]?.vendor.id || "");
+    if (!activeVendorId || !ingestCveId || !ingestDesc) {
+      alert("Please fill all threat fields.");
+      return;
+    }
+    setIngestSaving(true);
+    try {
+      const res = await fetch("/api/resilience/threats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          vendorId: activeVendorId,
+          cveId: ingestCveId,
+          description: ingestDesc,
+          severity: ingestSeverity,
+          status: ingestStatus,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIngestCveId("");
+        setIngestDesc("");
+        setShowThreatForm(false);
+        setMessage(`✓ Security Threat ${data.threat.cveId} successfully ingested.`);
+        await loadData();
+      } else {
+        alert(data.error || "Failed to ingest CVE.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error ingesting CVE.");
+    } finally {
+      setIngestSaving(false);
+    }
+  };
+
+  const handleRunSbomScan = () => {
+    setSbomErrors(null);
+    setSbomScanResults([]);
+    setSbomScanRan(true);
+    try {
+      const parsed = JSON.parse(sbomInput);
+      const deps = { ...parsed.dependencies, ...parsed.devDependencies };
+      
+      const results: Array<{ depName: string; version: string; threat: ThreatIntel }> = [];
+      Object.entries(deps).forEach(([depName, version]) => {
+        threats.forEach((threat) => {
+          const matchTarget = (threat.description + " " + threat.cveId).toLowerCase();
+          if (matchTarget.includes(depName.toLowerCase())) {
+            results.push({ depName, version: String(version), threat });
+          }
+        });
+      });
+      setSbomScanResults(results);
+    } catch (err: any) {
+      setSbomErrors("Invalid package.json structure: " + err.message);
+    }
+  };
+
+  const handleCreateSbomRemediation = async (result: { depName: string; version: string; threat: ThreatIntel }) => {
+    try {
+      const response = await fetch("/api/remediation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `Patch vulnerability ${result.threat.cveId} in ${result.depName}`,
+          description: `A dependency match was detected in the tech stack SBOM scan. The dependency ${result.depName} (version: ${result.version}) is vulnerable to ${result.threat.cveId}: ${result.threat.description}. Action is required to upgrade or patch this dependency.`,
+          owner: "security-team@solaris-group.com",
+          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+          severity: result.threat.severity,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setCreatedTasks(prev => ({ ...prev, [result.threat.id + "-" + result.depName]: true }));
+        setMessage("✓ Remediation task successfully created for " + result.threat.cveId);
+      } else {
+        alert(data.error || "Failed to create task.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error creating remediation task.");
+    }
+  };
+
+
   const loadData = async () => {
     try {
       const res = await fetch("/api/resilience");
@@ -641,13 +745,97 @@ export default function ResiliencePage() {
 
           {/* Active Threat Intelligence Feed Widget */}
           <div className="card" style={{ borderLeft: threats.some(t => t.status === "UNPATCHED") ? "4px solid var(--color-error)" : "4px solid var(--color-brand)" }}>
-            <h2 style={{ fontSize: "1.1rem", marginBottom: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <span className="pulse-red" style={{ backgroundColor: threats.some(t => t.status === "UNPATCHED") ? "var(--color-error)" : "var(--color-brand)" }} />
-              Active Threat Feed
+            <h2 style={{ fontSize: "1.1rem", marginBottom: "0.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <span className="pulse-red" style={{ backgroundColor: threats.some(t => t.status === "UNPATCHED") ? "var(--color-error)" : "var(--color-brand)" }} />
+                Active Threat Feed
+              </span>
+              <button 
+                onClick={() => setShowThreatForm(!showThreatForm)} 
+                className="btn btn-secondary" 
+                style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem", textTransform: "none" }}
+              >
+                {showThreatForm ? "Close Form" : "+ Ingest CVE"}
+              </button>
             </h2>
             <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "1.25rem" }}>
               Live security alerts and newly discovered CVE vulnerabilities linked to the software stacks of registered ICT vendors.
             </p>
+
+            {showThreatForm && (
+              <form onSubmit={handleIngestThreat} style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.25rem", padding: "0.75rem", backgroundColor: "rgba(0,0,0,0.2)", borderRadius: "4px", border: "1px solid var(--border-color)" }}>
+                <strong style={{ fontSize: "0.8rem", color: "var(--text-primary)" }}>Manual CVE Ingestion</strong>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: "0.7rem" }}>Target Vendor</label>
+                    <select
+                      className="form-control"
+                      value={ingestVendorId}
+                      onChange={(e) => setIngestVendorId(e.target.value)}
+                      style={{ padding: "0.3rem", fontSize: "0.75rem" }}
+                    >
+                      <option value="">-- Select Vendor --</option>
+                      {Array.from(new Map(services.map(s => [s.vendor.id, s.vendor.legalName])).entries()).map(([vId, vName]) => (
+                        <option key={vId} value={vId}>{vName}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: "0.7rem" }}>CVE ID</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="CVE-2026-XXXX"
+                      value={ingestCveId}
+                      onChange={(e) => setIngestCveId(e.target.value)}
+                      style={{ padding: "0.3rem", fontSize: "0.75rem" }}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ fontSize: "0.7rem" }}>Vulnerability Description</label>
+                  <textarea
+                    className="form-control"
+                    placeholder="Describe the CVE vulnerability and affected package version..."
+                    value={ingestDesc}
+                    onChange={(e) => setIngestDesc(e.target.value)}
+                    style={{ height: "50px", padding: "0.3rem", fontSize: "0.75rem" }}
+                    required
+                  />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: "0.7rem" }}>Severity</label>
+                    <select
+                      className="form-control"
+                      value={ingestSeverity}
+                      onChange={(e) => setIngestSeverity(e.target.value)}
+                      style={{ padding: "0.3rem", fontSize: "0.75rem" }}
+                    >
+                      <option value="HIGH">HIGH</option>
+                      <option value="MEDIUM">MEDIUM</option>
+                      <option value="LOW">LOW</option>
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: "0.7rem" }}>Patch Status</label>
+                    <select
+                      className="form-control"
+                      value={ingestStatus}
+                      onChange={(e) => setIngestStatus(e.target.value)}
+                      style={{ padding: "0.3rem", fontSize: "0.75rem" }}
+                    >
+                      <option value="UNPATCHED">UNPATCHED</option>
+                      <option value="PATCHED">PATCHED</option>
+                    </select>
+                  </div>
+                </div>
+                <button type="submit" className="btn btn-primary" style={{ padding: "0.35rem", fontSize: "0.75rem" }} disabled={ingestSaving}>
+                  {ingestSaving ? "Saving..." : "Submit Threat Report"}
+                </button>
+              </form>
+            )}
 
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               {threats.map((threat) => (
@@ -676,6 +864,99 @@ export default function ResiliencePage() {
                   </p>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* SBOM Technical Stack Scanner */}
+          <div className="card" style={{ borderTop: "2px solid var(--color-warning)" }}>
+            <h2 style={{ fontSize: "1.1rem", marginBottom: "0.5rem" }}>SBOM Technical Stack Scanner</h2>
+            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "1.25rem" }}>
+              Paste a vendor's <code style={{ color: "var(--color-brand)" }}>package.json</code> file below to audit third-party dependency vulnerabilities.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <textarea
+                  className="form-control"
+                  style={{ minHeight: "120px", fontFamily: "monospace", fontSize: "0.75rem", backgroundColor: "rgba(0,0,0,0.2)" }}
+                  placeholder={`{\n  "dependencies": {\n    "openssl": "^1.1.1",\n    "ecdsa-sig": "1.0.0"\n  }\n}`}
+                  value={sbomInput}
+                  onChange={(e) => setSbomInput(e.target.value)}
+                />
+              </div>
+
+              {sbomErrors && (
+                <div style={{ padding: "0.5rem 0.75rem", fontSize: "0.75rem", color: "var(--color-error)", backgroundColor: "rgba(239, 68, 68, 0.08)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: "4px" }}>
+                  {sbomErrors}
+                </div>
+              )}
+
+              <button
+                className="btn btn-primary"
+                onClick={handleRunSbomScan}
+                disabled={!sbomInput}
+              >
+                🔍 Analyze Tech Stack Dependencies
+              </button>
+
+              {sbomScanRan && (
+                <div style={{ marginTop: "0.5rem", borderTop: "1px solid var(--border-color)", paddingTop: "1rem" }}>
+                  <h3 style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: "0.75rem" }}>
+                    Audit Results ({sbomScanResults.length} Vulnerabilities)
+                  </h3>
+
+                  {sbomScanResults.length === 0 ? (
+                    <div style={{ fontSize: "0.8rem", color: "var(--color-brand)", backgroundColor: "rgba(20, 184, 166, 0.05)", padding: "0.75rem", borderRadius: "4px", border: "1px solid rgba(20, 184, 166, 0.15)" }}>
+                      ✓ Clean Scan! No vulnerable dependencies matched the active threat database.
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                      {sbomScanResults.map((result, idx) => {
+                        const isCreated = createdTasks[result.threat.id + "-" + result.depName];
+                        return (
+                          <div
+                            key={idx}
+                            style={{
+                              padding: "0.75rem",
+                              borderRadius: "6px",
+                              backgroundColor: "rgba(239, 68, 68, 0.03)",
+                              border: "1px solid rgba(239, 68, 68, 0.15)",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "0.4rem"
+                            }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--color-error)" }}>
+                                {result.threat.cveId} ({result.threat.severity})
+                              </span>
+                              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                                Match: <code style={{ color: "var(--text-secondary)" }}>{result.depName}</code>
+                              </span>
+                            </div>
+                            <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", margin: 0, lineHeight: "1.3" }}>
+                              {result.threat.description}
+                            </p>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.25rem", borderTop: "1px dashed rgba(255,255,255,0.06)", paddingTop: "0.4rem" }}>
+                              <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                                Vendor: <strong>{result.threat.vendor.legalName}</strong>
+                              </span>
+                              <button
+                                className="btn btn-secondary"
+                                onClick={() => handleCreateSbomRemediation(result)}
+                                disabled={isCreated}
+                                style={{ padding: "0.2rem 0.5rem", fontSize: "0.65rem", textTransform: "none" }}
+                              >
+                                {isCreated ? "✓ Task Logged" : "Log Remediation Gap"}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

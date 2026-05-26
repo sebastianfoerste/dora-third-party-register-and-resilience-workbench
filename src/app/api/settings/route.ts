@@ -13,6 +13,7 @@ export async function GET() {
       enforce_eea_data_residency: "true",
       enforce_eu_governing_law: "true",
       enforce_exit_plan_for_critical_services: "true",
+      sla_max_downtime_minutes: "120",
     };
 
     const responseMap: Record<string, string> = { ...defaults };
