@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DORA Third-Party Register and Resilience Workbench
 
-## Getting Started
+A supervised legal engineering prototype for DORA third-party ICT risk governance.
 
-First, run the development server:
+The workbench helps regulated financial entities structure ICT provider records, map critical functions, track resilience obligations, prepare review workflows and maintain audit-ready evidence.
+
+## Why this matters
+
+DORA turns outsourcing and ICT risk into a continuously governed data problem. Legal review alone is not enough. Firms need structured registers, review states, escalation rules, evidence trails and human sign-off.
+
+## Current scope
+
+* ICT third-party register model
+* Provider and service records
+* Criticality classification workflow
+* Review states and evidence fields
+* Local-first prototype
+* No client data
+* No legal advice
+
+## Workflow
+
+```mermaid
+flowchart TD
+  A[Provider record] --> B[ICT service mapping]
+  B --> C[Function and criticality assessment]
+  C --> D[Evidence collection]
+  D --> E[Reviewer queue]
+  E --> F{Approved?}
+  F -- No --> G[Gap or follow-up action]
+  F -- Yes --> H[Audit-ready register]
+```
+
+## What this proves
+
+* Financial regulation is increasingly a workflow and data architecture challenge.
+* Legal engineers can translate regulatory obligations into operational systems.
+* DORA implementation benefits from product thinking: register, review state, evidence, decision and escalation.
+
+## Stack
+
+* Next.js 16
+* React 19
+* TypeScript
+* Prisma
+* SQLite for local prototype storage
+* Vitest
+
+## Commands
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run lint
+npm run test
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Safety note
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This repository is a prototype. It does not provide legal advice and should not be used for production DORA compliance without professional review, security hardening and organisation-specific validation.
