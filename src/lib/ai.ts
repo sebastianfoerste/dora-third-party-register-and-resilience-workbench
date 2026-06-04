@@ -53,7 +53,7 @@ function localMockExtract(text: string): ExtractedContractData {
   // Try to find dates
   let effectiveDate: string | null = null;
   let terminationDate: string | null = null;
-  let renewalDate: string | null = null;
+  const renewalDate: string | null = null;
 
   // Simple date regex: YYYY-MM-DD or DD/MM/YYYY or month text
   const datePattern = /\b(?:\d{4}[-\/]\d{2}[-\/]\d{2}|\d{1,2}[-\/]\d{1,2}[-\/]\d{4}|[A-Z][a-z]+\s+\d{1,2},\s+\d{4})\b/g;
@@ -81,7 +81,7 @@ function localMockExtract(text: string): ExtractedContractData {
   const clauses = DORA_CLAUSE_REQUIREMENTS.map((req) => {
     let status: "PRESENT" | "MISSING" | "PARTIAL" | "UNCLEAR" = "MISSING";
     let evidence = "";
-    let confidence = 0.9;
+    const confidence = 0.9;
 
     switch (req.id) {
       case "dora-art-30-2-a": // Service Description

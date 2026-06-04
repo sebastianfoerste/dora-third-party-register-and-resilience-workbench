@@ -21,6 +21,10 @@ vi.mock("../prisma", () => {
 });
 
 describe("recalculateAllRegisters", () => {
+  type RegisterEntries = Awaited<ReturnType<typeof prisma.registerEntry.findMany>>;
+  type RegisterEntryUpdate = Awaited<ReturnType<typeof prisma.registerEntry.update>>;
+  type AuditLogCreate = Awaited<ReturnType<typeof prisma.auditLog.create>>;
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -28,9 +32,9 @@ describe("recalculateAllRegisters", () => {
   it("should load settings, validate each register entry, and save validation results", async () => {
     // 1. Mock policy settings
     vi.mocked(prisma.policySetting.findMany).mockResolvedValue([
-      { id: "1", key: "enforce_eea_data_residency", value: "true", updatedAt: new Date() },
-      { id: "2", key: "enforce_eu_governing_law", value: "false", updatedAt: new Date() },
-      { id: "3", key: "enforce_exit_plan_for_critical_services", value: "true", updatedAt: new Date() },
+      { id: "1", key: "enforce_eea_data_residency", value: "true", description: null, updatedAt: new Date() },
+      { id: "2", key: "enforce_eu_governing_law", value: "false", description: null, updatedAt: new Date() },
+      { id: "3", key: "enforce_exit_plan_for_critical_services", value: "true", description: null, updatedAt: new Date() },
     ]);
 
     // 2. Mock register entry data
@@ -77,9 +81,9 @@ describe("recalculateAllRegisters", () => {
       },
     };
 
-    vi.mocked(prisma.registerEntry.findMany).mockResolvedValue([mockRegisterEntry as any]);
-    vi.mocked(prisma.registerEntry.update).mockResolvedValue({} as any);
-    vi.mocked(prisma.auditLog.create).mockResolvedValue({} as any);
+    vi.mocked(prisma.registerEntry.findMany).mockResolvedValue([mockRegisterEntry] as unknown as RegisterEntries);
+    vi.mocked(prisma.registerEntry.update).mockResolvedValue({} as RegisterEntryUpdate);
+    vi.mocked(prisma.auditLog.create).mockResolvedValue({} as AuditLogCreate);
 
     // Run the recalculation script
     await recalculateAllRegisters();

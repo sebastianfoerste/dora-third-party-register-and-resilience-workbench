@@ -294,7 +294,7 @@ async function main() {
   console.log("Seeding Clause Findings...");
   // Set up present clause findings for contract 1
   for (const req of createdReqs) {
-    let status: "PRESENT" | "MISSING" | "PARTIAL" | "UNCLEAR" = "PRESENT";
+    const status: "PRESENT" | "MISSING" | "PARTIAL" | "UNCLEAR" = "PRESENT";
     let evidence = `Extracted clause covering DORA requirements for ${req.requirementName}.`;
     
     if (req.regulatoryBasis.includes("30(2)(e)")) {

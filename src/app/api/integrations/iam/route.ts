@@ -43,11 +43,11 @@ export async function POST(req: Request) {
       const mappings = config.groupMapping || [];
 
       let userCount = 0;
-      let mappingLogs: string[] = [];
+      const mappingLogs: string[] = [];
       
       mappings.forEach((m: any) => {
         // Mock import count based on group
-        let count = m.group.includes("CCO") ? 2 : 12;
+        const count = m.group.includes("CCO") ? 2 : 12;
         userCount += count;
         mappingLogs.push(`${count} users from Okta group '${m.group}' mapped to system role '${m.role}'`);
       });

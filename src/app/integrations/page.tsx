@@ -164,8 +164,8 @@ export default function IntegrationsPage() {
     setSyncingType(systemType);
     setAlertMsg(null);
     try {
-      let endpoint = `/api/integrations/${systemType.toLowerCase()}`;
-      let body: any = {};
+      const endpoint = `/api/integrations/${systemType.toLowerCase()}`;
+      const body: any = {};
 
       if (systemType === "IAM") {
         body.action = "SYNC_GROUPS";

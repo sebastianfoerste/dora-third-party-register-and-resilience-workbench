@@ -102,7 +102,7 @@ const NAV_ITEMS = [
     ),
   },
   {
-    name: "Outreach Console",
+    name: "Vendor Drafts",
     path: "/outreach",
     icon: (
       <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

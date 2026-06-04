@@ -22,6 +22,12 @@ vi.mock("../prisma", () => {
 });
 
 describe("Outreach API Route", () => {
+  type Vendors = Awaited<ReturnType<typeof prisma.vendor.findMany>>;
+  type Vendor = Awaited<ReturnType<typeof prisma.vendor.findUnique>>;
+  type RemediationTasks = Awaited<ReturnType<typeof prisma.remediationTask.findMany>>;
+  type RemediationTaskUpdate = Awaited<ReturnType<typeof prisma.remediationTask.updateMany>>;
+  type AuditLogCreate = Awaited<ReturnType<typeof prisma.auditLog.create>>;
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -33,7 +39,7 @@ describe("Outreach API Route", () => {
         { id: "v2", legalName: "Vendor B", contracts: [], services: [] },
       ];
 
-      vi.mocked(prisma.vendor.findMany).mockResolvedValue(mockVendors as any);
+      vi.mocked(prisma.vendor.findMany).mockResolvedValue(mockVendors as unknown as Vendors);
 
       const response = await GET();
       const data = await response.json();
@@ -97,10 +103,10 @@ describe("Outreach API Route", () => {
         { id: "task-2", status: "OPEN" },
       ];
 
-      vi.mocked(prisma.vendor.findUnique).mockResolvedValue(mockVendor as any);
-      vi.mocked(prisma.remediationTask.findMany).mockResolvedValue(mockOpenTasks as any);
-      vi.mocked(prisma.remediationTask.updateMany).mockResolvedValue({ count: 2 } as any);
-      vi.mocked(prisma.auditLog.create).mockResolvedValue({} as any);
+      vi.mocked(prisma.vendor.findUnique).mockResolvedValue(mockVendor as Vendor);
+      vi.mocked(prisma.remediationTask.findMany).mockResolvedValue(mockOpenTasks as RemediationTasks);
+      vi.mocked(prisma.remediationTask.updateMany).mockResolvedValue({ count: 2 } as RemediationTaskUpdate);
+      vi.mocked(prisma.auditLog.create).mockResolvedValue({} as AuditLogCreate);
 
       const req = new Request("http://localhost/api/outreach", {
         method: "POST",
@@ -134,7 +140,7 @@ describe("Outreach API Route", () => {
         expect.objectContaining({
           data: expect.objectContaining({
             actor: "Chief Compliance Officer",
-            action: "VENDOR_OUTREACH",
+            action: "VENDOR_REMEDIATION_DRAFT_LOGGED",
             object: "Vendor:vendor-123",
           }),
         })

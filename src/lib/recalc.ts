@@ -1,6 +1,16 @@
 import { prisma } from "./prisma";
 import { validateRegisterEntry } from "./validators";
 
+type Criticality = "CRITICAL" | "IMPORTANT" | "NON_CRITICAL";
+
+function toCriticality(value: string): Criticality {
+  if (value === "CRITICAL" || value === "IMPORTANT" || value === "NON_CRITICAL") {
+    return value;
+  }
+
+  return "NON_CRITICAL";
+}
+
 export async function recalculateAllRegisters() {
   // 1. Load active policy settings from DB
   const dbSettings = await prisma.policySetting.findMany();
@@ -53,9 +63,9 @@ export async function recalculateAllRegisters() {
         service: entry.service,
         contract: entry.contract,
         findings: findingsMapped,
-        criticality: entry.criticality as any,
+        criticality: toCriticality(entry.criticality),
         nextReviewDue: entry.nextReviewDue,
-        resilienceTests: (entry.service as any).resilienceTests,
+        resilienceTests: entry.service.resilienceTests,
       },
       options
     );

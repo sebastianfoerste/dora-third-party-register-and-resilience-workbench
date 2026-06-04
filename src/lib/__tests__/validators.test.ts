@@ -113,4 +113,53 @@ describe("validateRegisterEntry", () => {
     const result = validateRegisterEntry(missingClausesData);
     expect(result.errors.some(e => e.id === "missing-high-clauses")).toBe(true);
   });
+
+  it("should block critical services that lack resilience testing evidence", () => {
+    const result = validateRegisterEntry({
+      ...baseData,
+      resilienceTests: [],
+    });
+
+    expect(result.status).toBe("INVALID");
+    expect(result.errors.some(e => e.id === "critical-no-resilience-testing")).toBe(true);
+  });
+
+  it("should flag overdue annual register reviews", () => {
+    const result = validateRegisterEntry({
+      ...baseData,
+      nextReviewDue: new Date("2026-01-15T00:00:00.000Z"),
+    });
+
+    expect(result.errors.some(e => e.id === "register-annual-review-overdue")).toBe(true);
+  });
+
+  it("should treat non-EU governing law as high risk when strict law policy is active", () => {
+    const result = validateRegisterEntry(
+      {
+        ...baseData,
+        contract: { ...baseData.contract, governingLaw: "New York" },
+      },
+      { enforceEUGoverningLaw: true },
+    );
+
+    expect(result.errors).toContainEqual(
+      expect.objectContaining({
+        id: "governing-law-non-eu",
+        severity: "HIGH",
+      }),
+    );
+  });
+
+  it("should require subcontractor details when subcontracting is used", () => {
+    const result = validateRegisterEntry({
+      ...baseData,
+      service: {
+        ...baseData.service,
+        subcontractingStatus: "YES",
+        subcontractorDetails: "",
+      },
+    });
+
+    expect(result.errors.some(e => e.id === "subcontractor-details-missing")).toBe(true);
+  });
 });

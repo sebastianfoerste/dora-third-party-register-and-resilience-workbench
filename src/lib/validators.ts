@@ -60,7 +60,7 @@ export function validateRegisterEntry(
   }
  ): ValidationResult {
   const errors: ValidationError[] = [];
-  let totalChecks = 15;
+  const totalChecks = 15;
   let passedChecks = 15;
  
   const { legalEntity, vendor, service, contract, findings, criticality, nextReviewDue, resilienceTests } = data;
@@ -348,7 +348,7 @@ export function validateRegisterEntry(
   }
 
   // Calculate score between 0 and 100
-  let score = Math.round((Math.max(0, passedChecks) / totalChecks) * 100);
+  const score = Math.round((Math.max(0, passedChecks) / totalChecks) * 100);
 
   // Status mapping
   let status: "VALID" | "WARNING" | "INVALID" = "VALID";

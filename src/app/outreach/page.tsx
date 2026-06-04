@@ -177,9 +177,9 @@ Solaris SE / Bitpanda Custody`;
   return (
     <div>
       <div className="page-header" style={{ marginBottom: "2rem" }}>
-        <h1 className="page-title">Vendor Outreach Console</h1>
+        <h1 className="page-title">Vendor Communication Drafts</h1>
         <p className="page-subtitle">
-          Remediate DORA Article 30 contractual compliance gaps. Select an ICT vendor with missing clauses to generate standard legal amendment requests.
+          Prepare reviewed DORA Article 30 remediation drafts for ICT vendors. The workbench records an internal audit event only after a human reviewer confirms the draft.
         </p>
       </div>
 
@@ -232,14 +232,14 @@ Solaris SE / Bitpanda Custody`;
           </div>
         </div>
 
-        {/* Right Side: Outreach letter compiler */}
+        {/* Right Side: vendor communication draft compiler */}
         <div className="card" style={{ display: "flex", flexDirection: "column" }}>
           {selectedVendor ? (
             <div style={{ display: "flex", flexDirection: "column", height: "100%", gap: "1rem" }}>
               <div style={{ borderBottom: "1px solid var(--border-color)", paddingBottom: "0.75rem", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
                 <div>
                   <h2 style={{ fontSize: "1.1rem", fontWeight: 600, margin: 0 }}>
-                    Outreach Draft: {selectedVendor.legalName}
+                    Reviewed Draft: {selectedVendor.legalName}
                   </h2>
                   <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                     Based on {selectedVendor.contracts.length} contract(s) uploaded
@@ -259,14 +259,14 @@ Solaris SE / Bitpanda Custody`;
                     onClick={handleMarkAsSent}
                     disabled={sentStatus}
                   >
-                    {sentStatus ? "✓ Logged as Sent" : "Mark as Sent"}
+                    {sentStatus ? "Logged" : "Log Reviewed Draft"}
                   </button>
                 </div>
               </div>
 
               {sentStatus && (
                 <div style={{ padding: "0.6rem 0.8rem", borderRadius: "4px", backgroundColor: "rgba(20, 184, 166, 0.08)", border: "1px solid rgba(20, 184, 166, 0.2)", color: "var(--color-brand)", fontSize: "0.8rem" }}>
-                  ✓ Communication logged to the audit log. Contract remediation status has been updated.
+                  Reviewed draft logged to the audit trail. Contract remediation status has been updated.
                 </div>
               )}
 
@@ -288,7 +288,7 @@ Solaris SE / Bitpanda Custody`;
                         color: "var(--color-error)",
                       }}
                     >
-                      {m.basis} &mdash; {m.name}
+                      {m.basis}: {m.name}
                     </span>
                   ))}
                   {getMissingClauses(selectedVendor).length === 0 && (
@@ -323,9 +323,9 @@ Solaris SE / Bitpanda Custody`;
               <svg style={{ width: "48px", height: "48px", stroke: "currentColor", fill: "none", marginBottom: "1rem", opacity: 0.3 }} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-              <h3 style={{ fontSize: "1rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>Outreach Draft Workspace</h3>
+              <h3 style={{ fontSize: "1rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>Vendor Draft Workspace</h3>
               <p style={{ fontSize: "0.8rem", maxWidth: "350px" }}>
-                Select a vendor from the provider list to analyze active agreement gaps and draft a standard DORA amendment outreach email.
+                Select a vendor from the provider list to analyze active agreement gaps and prepare a reviewed DORA amendment draft.
               </p>
             </div>
           )}
