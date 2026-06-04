@@ -38,10 +38,6 @@ export default function IntegrationsPage() {
     IAM: { endpointUrl: "", clientId: "", secretToken: "", issuerUrl: "" }
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
   const fetchData = async () => {
     try {
       const res = await fetch("/api/integrations");
@@ -73,6 +69,10 @@ export default function IntegrationsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const handleFormChange = (systemType: string, field: string, value: string) => {
     setForms(prev => ({
