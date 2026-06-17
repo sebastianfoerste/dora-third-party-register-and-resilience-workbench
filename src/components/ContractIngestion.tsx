@@ -7,18 +7,18 @@ import Link from "next/link";
 interface ContractItem {
   id: string;
   sourceFile: string;
-  effectiveDate: string | null;
-  terminationDate: string | null;
+  effectiveDate: string | Date | null;
+  terminationDate: string | Date | null;
   governingLaw: string;
   vendor: { legalName: string };
   legalEntity: { name: string };
-  clauseFindings: any[];
+  clauseFindings: Array<{ status: string }>;
 }
 
 interface Props {
   initialContracts: ContractItem[];
-  vendors: any[];
-  legalEntities: any[];
+  vendors: Array<{ id: string; legalName: string; country: string }>;
+  legalEntities: Array<{ id: string; name: string; licenceType: string }>;
 }
 
 const SAMPLE_TEMPLATES = [
@@ -69,7 +69,7 @@ Between Bitpanda Custody GmbH ("Customer") and Sum & Substance Ltd ("Provider"),
 
 export default function ContractIngestion({ initialContracts, vendors, legalEntities }: Props) {
   const router = useRouter();
-  const [contracts, setContracts] = useState<ContractItem[]>(initialContracts);
+  const contracts = initialContracts;
   
   // Form States
   const [vendorId, setVendorId] = useState("");

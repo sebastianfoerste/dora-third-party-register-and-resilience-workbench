@@ -18,7 +18,7 @@ export default async function ContractsPage() {
 
   return (
     <ContractIngestion
-      initialContracts={contracts as any}
+      initialContracts={contracts}
       vendors={vendors}
       legalEntities={legalEntities}
     />

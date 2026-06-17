@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { recalculateAllRegisters } from "@/lib/recalc";
+import { getErrorMessage } from "@/lib/error-message";
 
 export async function POST(req: Request) {
   try {
@@ -35,8 +36,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, threat });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("POST ingest threat CVE error:", error);
-    return NextResponse.json({ error: "Failed to ingest threat CVE: " + error.message }, { status: 500 });
+    return NextResponse.json({ error: "Failed to ingest threat CVE: " + getErrorMessage(error) }, { status: 500 });
   }
 }

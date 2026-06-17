@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getErrorMessage } from "@/lib/error-message";
 
 type RouteParams = {
   params: Promise<{ id?: string }>;
@@ -159,10 +160,10 @@ Use neat markdown formatting for your answer. Keep it professional, objective, a
         content: answerText,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Contract audit chat API error:", error);
     return NextResponse.json(
-      { error: "Failed to query the AI assistant. " + error.message },
+      { error: "Failed to query the AI assistant. " + getErrorMessage(error) },
       { status: 500 }
     );
   }

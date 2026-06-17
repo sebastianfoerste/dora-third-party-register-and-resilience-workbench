@@ -17,7 +17,7 @@ export async function GET() {
     });
 
     return NextResponse.json({ settings, logs });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Fetch integrations error:", error);
     return NextResponse.json({ error: "Failed to fetch integrations" }, { status: 500 });
   }
@@ -117,7 +117,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, setting });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Save integration error:", error);
     return NextResponse.json({ error: "Failed to save integration config" }, { status: 500 });
   }

@@ -47,3 +47,9 @@ next-env.d.ts
 *.db-journal
 *.sqlite
 *.sqlite3
+
+# Private files (not public)
+AGENTS.md
+agents.md
+docs/
+docs

@@ -42,7 +42,7 @@ export async function GET() {
     });
 
     return NextResponse.json({ success: true, tests, services, threatIntel, simulations });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("GET resilience tests error:", error);
     return NextResponse.json({ error: "Failed to load resilience tests" }, { status: 500 });
   }
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, test });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("POST resilience test error:", error);
     return NextResponse.json({ error: "Failed to log resilience test" }, { status: 500 });
   }

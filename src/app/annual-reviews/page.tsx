@@ -286,10 +286,10 @@ export default function AnnualReviewsPage() {
                     <strong>{h.reviewer}</strong>
                   </div>
                   <strong style={{ display: "block", color: "var(--text-secondary)", margin: "0.2rem 0" }}>
-                    {h.vendorName} &mdash; {h.serviceName}
+                    {h.vendorName}, {h.serviceName}
                   </strong>
                   <p style={{ color: "var(--text-muted)", margin: 0, fontStyle: "italic" }}>
-                    "{h.notes || "No notes logged."}"
+                    &ldquo;{h.notes || "No notes logged."}&rdquo;
                   </p>
                 </div>
               ))}

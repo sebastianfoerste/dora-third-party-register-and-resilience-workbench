@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { validateRegisterEntry } from "@/lib/validators";
+import { normalizeRegisterCriticality, validateRegisterEntry } from "@/lib/validators";
 import { writeFile } from "fs/promises";
 import path from "path";
+import { getErrorMessage } from "@/lib/error-message";
 
 export const revalidate = 0;
 
@@ -149,14 +150,14 @@ export async function POST(req: Request) {
         service: entry.service,
         contract: entry.contract,
         findings: findingsMapped,
-        criticality: entry.criticality as any,
+        criticality: normalizeRegisterCriticality(entry.criticality),
         nextReviewDue: entry.nextReviewDue,
-        resilienceTests: (entry.service as any).resilienceTests,
+        resilienceTests: entry.service.resilienceTests,
       }, options);
 
       // Collect warnings
       valResult.errors.forEach((err) => {
-        warnings.push(`${entry.vendor.legalName} (${entry.service.supportedFunction}): ${err.message}`);
+        warnings.push(`${entry.vendor.legalName} (${entry.service.supportedFunction}): ${getErrorMessage(err)}`);
       });
 
       const errorSummary = valResult.errors.map(e => e.message).join(" | ");
@@ -218,8 +219,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, export: roiExport });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("POST compile register export error:", error);
-    return NextResponse.json({ error: "Failed to compile register package: " + error.message }, { status: 500 });
+    return NextResponse.json({ error: "Failed to compile register package: " + getErrorMessage(error) }, { status: 500 });
   }
 }

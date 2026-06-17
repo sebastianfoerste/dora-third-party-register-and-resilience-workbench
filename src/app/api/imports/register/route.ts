@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { validateRegisterEntry } from "@/lib/validators";
+import { normalizeRegisterCriticality, validateRegisterEntry } from "@/lib/validators";
+import { getErrorMessage } from "@/lib/error-message";
 
 // Robust RFC 4180 CSV parser
 function parseCSV(content: string): string[][] {
@@ -189,7 +190,7 @@ export async function POST(req: Request) {
           service,
           contract: null,
           findings: [],
-          criticality: criticalityResult as any,
+          criticality: normalizeRegisterCriticality(criticalityResult),
         });
 
         // Create RegisterEntry
@@ -207,8 +208,8 @@ export async function POST(req: Request) {
         });
 
         importedCount++;
-      } catch (err: any) {
-        errors.push(`Row ${dataRows.indexOf(row) + 2}: ${err.message}`);
+      } catch (err: unknown) {
+        errors.push(`Row ${dataRows.indexOf(row) + 2}: ${getErrorMessage(err)}`);
       }
     }
 
@@ -231,7 +232,7 @@ export async function POST(req: Request) {
       failedCount: errors.length,
       errors,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("CSV Import error:", error);
     return NextResponse.json({ error: "Server error during import processing" }, { status: 500 });
   }

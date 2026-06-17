@@ -101,7 +101,7 @@ export async function POST() {
       recordsSyncedCount: entries.length,
       payload: grcPayload,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("GRC sync error:", error);
     return NextResponse.json({ error: "Server error during GRC synchronization" }, { status: 500 });
   }

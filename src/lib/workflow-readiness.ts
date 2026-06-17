@@ -121,6 +121,7 @@ export function assessDoraExportReadiness(input: {
   missingHighClauseCount: number;
   openRemediationCount: number;
   exitPlanStatus?: string | null;
+  latestExitPlanRehearsalStatus?: "APPROVED" | "COMPLETED" | "FAILED" | "DRAFT" | null;
   latestResilienceTestStatus?: "PASSED" | "FAILED" | "PENDING" | null;
 }): ReadinessAssessment {
   const blockers: string[] = [];
@@ -146,6 +147,15 @@ export function assessDoraExportReadiness(input: {
 
   if (input.exitPlanStatus && input.exitPlanStatus !== "APPROVED") {
     blockers.push("exit-plan-open");
+  }
+
+  if (input.latestExitPlanRehearsalStatus === "FAILED") {
+    blockers.push("exit-plan-rehearsal-failed");
+  } else if (
+    input.exitPlanStatus === "APPROVED" &&
+    (!input.latestExitPlanRehearsalStatus || input.latestExitPlanRehearsalStatus !== "APPROVED")
+  ) {
+    warnings.push("exit-plan-rehearsal-not-approved");
   }
 
   if (input.latestResilienceTestStatus === "FAILED") {

@@ -71,6 +71,7 @@ describe("DORA workflow readiness", () => {
         missingHighClauseCount: 2,
         openRemediationCount: 1,
         exitPlanStatus: "UNDER_REVIEW",
+        latestExitPlanRehearsalStatus: "FAILED",
         latestResilienceTestStatus: "FAILED",
       }),
     ).toEqual({
@@ -81,6 +82,7 @@ describe("DORA workflow readiness", () => {
         "high-severity-clause-gaps",
         "open-remediation",
         "exit-plan-open",
+        "exit-plan-rehearsal-failed",
         "resilience-test-failed",
       ],
       warnings: [],

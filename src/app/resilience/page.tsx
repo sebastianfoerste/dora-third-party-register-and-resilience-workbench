@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getErrorMessage } from "@/lib/error-message";
 
 interface Service {
   id: string;
@@ -44,6 +45,22 @@ interface SimulationRun {
   survivability: number;
   timelineLog: string; // JSON timeline
   testedAt: string;
+}
+
+type ResilienceTestStatus = ResilienceTest["status"];
+type SimulationTimelineEntry = {
+  time: string;
+  event: string;
+  status: "success" | "error" | "warning" | string;
+};
+
+const buildRemediationDueDate = () => {
+  return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+};
+
+function parseSimulationTimeline(timelineLog: string): SimulationTimelineEntry[] {
+  const parsed = JSON.parse(timelineLog) as unknown;
+  return Array.isArray(parsed) ? parsed as SimulationTimelineEntry[] : [];
 }
 
 export default function ResiliencePage() {
@@ -142,8 +159,8 @@ export default function ResiliencePage() {
         });
       });
       setSbomScanResults(results);
-    } catch (err: any) {
-      setSbomErrors("Invalid package.json structure: " + err.message);
+    } catch (err: unknown) {
+      setSbomErrors("Invalid package.json structure: " + getErrorMessage(err));
     }
   };
 
@@ -156,7 +173,7 @@ export default function ResiliencePage() {
           title: `Patch vulnerability ${result.threat.cveId} in ${result.depName}`,
           description: `A dependency match was detected in the tech stack SBOM scan. The dependency ${result.depName} (version: ${result.version}) is vulnerable to ${result.threat.cveId}: ${result.threat.description}. Action is required to upgrade or patch this dependency.`,
           owner: "security-team@solaris-group.com",
-          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+          dueDate: buildRemediationDueDate(),
           severity: result.threat.severity,
         }),
       });
@@ -198,6 +215,8 @@ export default function ResiliencePage() {
 
   useEffect(() => {
     loadData();
+    // Initial load only. User actions refresh resilience data explicitly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleOpenForm = () => {
@@ -474,7 +493,7 @@ export default function ResiliencePage() {
                 <select
                   className="form-control"
                   value={status}
-                  onChange={(e) => setStatus(e.target.value as any)}
+                  onChange={(e) => setStatus(e.target.value as ResilienceTestStatus)}
                 >
                   <option value="PASSED">PASSED / NOMINAL</option>
                   <option value="FAILED">FAILED / OPEN FINDINGS</option>
@@ -725,7 +744,7 @@ export default function ResiliencePage() {
                     color: "var(--text-secondary)"
                   }}
                 >
-                  {JSON.parse(activeRunResult.timelineLog).map((t: any, idx: number) => {
+                  {parseSimulationTimeline(activeRunResult.timelineLog).map((t, idx) => {
                     let color = "var(--text-secondary)";
                     if (t.status === "success") color = "var(--color-brand)";
                     else if (t.status === "error") color = "var(--color-error)";
@@ -871,7 +890,7 @@ export default function ResiliencePage() {
           <div className="card" style={{ borderTop: "2px solid var(--color-warning)" }}>
             <h2 style={{ fontSize: "1.1rem", marginBottom: "0.5rem" }}>SBOM Technical Stack Scanner</h2>
             <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "1.25rem" }}>
-              Paste a vendor's <code style={{ color: "var(--color-brand)" }}>package.json</code> file below to audit third-party dependency vulnerabilities.
+              Paste a vendor&rsquo;s <code style={{ color: "var(--color-brand)" }}>package.json</code> file below to audit third-party dependency vulnerabilities.
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>

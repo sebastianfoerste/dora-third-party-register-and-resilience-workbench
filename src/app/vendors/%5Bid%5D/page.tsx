@@ -33,5 +33,5 @@ export default async function VendorDetailPage({ params }: RouteParams) {
     return notFound();
   }
 
-  return <VendorProfile vendor={vendor as any} />;
+  return <VendorProfile vendor={vendor} />;
 }

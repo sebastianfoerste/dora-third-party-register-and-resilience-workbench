@@ -27,7 +27,7 @@ interface ServiceItem {
     id: string;
     result: string;
     confidence: number;
-    evidence: string;
+    evidence: string | null;
     status: string;
     reviewer: string | null;
     scoringInputs: string;
@@ -41,7 +41,7 @@ interface ThreatIntelItem {
   description: string;
   severity: string;
   status: string;
-  detectedAt: string;
+  detectedAt: string | Date;
 }
 
 interface VendorDetail {
@@ -62,7 +62,7 @@ interface Props {
 
 export default function VendorProfile({ vendor }: Props) {
   const router = useRouter();
-  const [services, setServices] = useState<ServiceItem[]>(vendor.services);
+  const services = vendor.services;
   const [reviewingAssessmentId, setReviewingAssessmentId] = useState<string | null>(null);
   const [reviewerName, setReviewerName] = useState("");
   const [reviewDecision, setReviewDecision] = useState("APPROVED");
@@ -120,7 +120,7 @@ export default function VendorProfile({ vendor }: Props) {
     }
   };
 
-  const startReview = (assessment: any) => {
+  const startReview = (assessment: ServiceItem["criticalityAssessments"][number]) => {
     setReviewingAssessmentId(assessment.id);
     setReviewResult(assessment.result);
     setReviewerName("");

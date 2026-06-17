@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import type { Contract } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { extractMetadataFromContract } from "@/lib/ai";
-import { validateRegisterEntry } from "@/lib/validators";
+import { normalizeRegisterCriticality, validateRegisterEntry } from "@/lib/validators";
 import { DORA_CLAUSE_REQUIREMENTS } from "@/lib/dora-rules";
 
 type RouteParams = {
@@ -34,7 +35,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     const extractedData = await extractMetadataFromContract(textToExtract);
 
     // Update contract metadata if changes found and not empty
-    const updateData: any = {};
+    const updateData: Partial<Pick<Contract, "governingLaw" | "effectiveDate" | "terminationDate">> = {};
     if (extractedData.governingLaw && contract.governingLaw === "Unknown") {
       updateData.governingLaw = extractedData.governingLaw;
     }
@@ -129,7 +130,7 @@ export async function POST(req: Request, { params }: RouteParams) {
             ...updateData,
           },
           findings: findingsResult,
-          criticality: regEntry.criticality as any,
+          criticality: normalizeRegisterCriticality(regEntry.criticality),
         });
 
         // Update register entry status
@@ -162,7 +163,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       extractedData,
       findings: findingsResult,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Contract extraction error:", error);
     return NextResponse.json({ error: "Server error during contract extraction" }, { status: 500 });
   }

@@ -12,6 +12,12 @@ export interface ValidationResult {
   errors: ValidationError[];
 }
 
+export type RegisterCriticality = "CRITICAL" | "IMPORTANT" | "NON_CRITICAL";
+
+export function normalizeRegisterCriticality(value: string): RegisterCriticality {
+  return value === "CRITICAL" || value === "IMPORTANT" ? value : "NON_CRITICAL";
+}
+
 export function validateLEI(lei: string | null): boolean {
   if (!lei) return false;
   return /^[A-Z0-9]{20}$/.test(lei.trim().toUpperCase());
@@ -43,7 +49,7 @@ export function validateRegisterEntry(
       status: string;
       severity: string;
     }>;
-    criticality: "CRITICAL" | "IMPORTANT" | "NON_CRITICAL";
+    criticality: RegisterCriticality;
     nextReviewDue?: Date | string | null;
     resilienceTests?: Array<{
       testType: string;

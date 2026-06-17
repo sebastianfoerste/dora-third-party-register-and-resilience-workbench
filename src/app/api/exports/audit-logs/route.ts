@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getErrorMessage } from "@/lib/error-message";
 
 export const revalidate = 0;
 
@@ -12,7 +14,7 @@ export async function GET(req: Request) {
     const format = searchParams.get("format");
 
     // Construct Prisma where query
-    const where: any = {};
+    const where: Prisma.AuditLogWhereInput = {};
     if (actorFilter && actorFilter !== "all") {
       where.actor = actorFilter;
     }
@@ -78,8 +80,8 @@ export async function GET(req: Request) {
         "Content-Type": "text/csv; charset=utf-8"
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("GET export audit logs error:", error);
-    return NextResponse.json({ error: "Failed to generate CSV audit logs: " + error.message }, { status: 500 });
+    return NextResponse.json({ error: "Failed to generate CSV audit logs: " + getErrorMessage(error) }, { status: 500 });
   }
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 
 interface AuditLog {
   id: string;
@@ -57,6 +56,8 @@ export default function AuditLogsPage() {
 
   useEffect(() => {
     fetchLogs();
+    // Search is submitted explicitly via Enter to avoid refetching on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actor, action]); // Trigger fetch on select filter changes
 
   const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {

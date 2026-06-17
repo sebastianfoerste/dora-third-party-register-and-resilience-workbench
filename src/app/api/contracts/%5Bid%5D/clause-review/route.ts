@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { extractMetadataFromContract } from "@/lib/ai";
-import { validateRegisterEntry } from "@/lib/validators";
+import { normalizeRegisterCriticality, validateRegisterEntry } from "@/lib/validators";
 
 type RouteParams = {
   params: Promise<{ id?: string }>;
@@ -85,7 +85,7 @@ export async function POST(req: Request, { params }: RouteParams) {
           service,
           contract,
           findings: findingsResult,
-          criticality: regEntry.criticality as any,
+          criticality: normalizeRegisterCriticality(regEntry.criticality),
         });
 
         await prisma.registerEntry.update({
@@ -112,7 +112,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       success: true,
       findings: findingsResult,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Clause review error:", error);
     return NextResponse.json({ error: "Server error during clause review" }, { status: 500 });
   }

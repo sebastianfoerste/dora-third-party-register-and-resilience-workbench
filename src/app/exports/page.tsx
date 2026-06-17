@@ -18,7 +18,7 @@ export default async function ExportsPage(props: { searchParams: Promise<{ entit
 
   return (
     <ExportCenter
-      initialExports={exportsList as any}
+      initialExports={exportsList}
       legalEntities={legalEntities}
       entriesCount={entriesCount}
     />

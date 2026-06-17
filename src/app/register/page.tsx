@@ -31,7 +31,7 @@ export default async function RegisterPage(props: { searchParams: Promise<{ enti
 
   return (
     <RegisterCockpit
-      initialEntries={entries as any}
+      initialEntries={entries}
       legalEntities={legalEntities}
       vendors={vendors}
     />

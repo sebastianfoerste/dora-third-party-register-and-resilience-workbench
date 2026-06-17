@@ -101,7 +101,7 @@ export async function POST(req: Request) {
       success: true,
       assessment: updatedAssessment,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Criticality review error:", error);
     return NextResponse.json({ error: "Server error during criticality review" }, { status: 500 });
   }

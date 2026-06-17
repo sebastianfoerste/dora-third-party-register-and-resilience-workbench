@@ -136,7 +136,7 @@ export async function POST(req: Request, { params }: RouteParams) {
       success: true,
       assessment: dbAssessment,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Criticality run error:", error);
     return NextResponse.json({ error: "Server error during criticality assessment" }, { status: 500 });
   }

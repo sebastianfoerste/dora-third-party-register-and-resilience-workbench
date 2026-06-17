@@ -9,21 +9,28 @@ interface RegisterEntryItem {
   legalEntity: { id: string; name: string; lei: string | null };
   vendor: { id: string; legalName: string; lei: string | null };
   service: { id: string; serviceDescription: string; supportedFunction: string; location: string };
-  contract: { id: string; sourceFile: string; clauseFindings: any[] } | null;
+  contract: { id: string; sourceFile: string; clauseFindings: Array<{ status: string }> } | null;
   criticality: string;
   validationStatus: string;
   validationErrors: string | null;
 }
 
+type ImportResult = {
+  success: boolean;
+  importedCount?: number;
+  error?: string;
+  errors?: string[];
+} | null;
+
 interface Props {
   initialEntries: RegisterEntryItem[];
-  legalEntities: any[];
-  vendors: any[];
+  legalEntities: unknown[];
+  vendors: unknown[];
 }
 
-export default function RegisterCockpit({ initialEntries, legalEntities, vendors }: Props) {
+export default function RegisterCockpit({ initialEntries }: Props) {
   const router = useRouter();
-  const [entries, setEntries] = useState<RegisterEntryItem[]>(initialEntries);
+  const entries = initialEntries;
   const [filterCriticality, setFilterCriticality] = useState<string>("ALL");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [search, setSearch] = useState<string>("");
@@ -34,7 +41,7 @@ export default function RegisterCockpit({ initialEntries, legalEntities, vendors
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<any>(null);
+  const [importResult, setImportResult] = useState<ImportResult>(null);
 
   // Target DORA register fields
   const TARGET_FIELDS = [
@@ -127,7 +134,7 @@ export default function RegisterCockpit({ initialEntries, legalEntities, vendors
           window.location.reload();
         }, 2000);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       setImportResult({ success: false, error: "Import network transaction failed." });
     } finally {
@@ -326,7 +333,7 @@ export default function RegisterCockpit({ initialEntries, legalEntities, vendors
           <div className="modal-content" style={{ maxWidth: "680px" }}>
             <h2 style={{ fontSize: "1.4rem", marginBottom: "0.5rem" }}>Import DORA Register</h2>
             <p className="page-subtitle" style={{ marginBottom: "1.5rem" }}>
-              Upload your Excel or CSV register of information. We'll map the columns and validate regulatory compliance.
+              Upload your Excel or CSV register of information. We&rsquo;ll map the columns and validate regulatory compliance.
             </p>
 
             {!csvFileContent ? (

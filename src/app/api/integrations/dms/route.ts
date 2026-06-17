@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { mkdir, copyFile } from "fs/promises";
 import path from "path";
+import { getErrorMessage } from "@/lib/error-message";
 
 export async function POST() {
   try {
@@ -60,8 +61,8 @@ export async function POST() {
         const targetPath = path.join(targetDir, sourceFilename);
         await copyFile(sourcePath, targetPath);
         copiedFiles.push(sourceFilename);
-      } catch (err: any) {
-        console.warn(`Could not copy export file ${filePath}:`, err.message);
+      } catch (err: unknown) {
+        console.warn(`Could not copy export file ${filePath}:`, getErrorMessage(err));
       }
     }
 
@@ -97,9 +98,8 @@ export async function POST() {
       filesSynced: copiedFiles,
       folderId
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("DMS sync error:", error);
     return NextResponse.json({ error: "Server error during DMS upload sync" }, { status: 500 });
   }
 }
-

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { buildExitPlanRehearsalCreateInput } from "@/lib/exit-plan-rehearsal";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
@@ -201,18 +202,46 @@ export async function POST(req: Request) {
       },
     });
 
+    const rehearsal = await prisma.exitPlanRehearsal.create({
+      data: buildExitPlanRehearsalCreateInput({
+        serviceId,
+        scenarioType: scenarioKey,
+        assumptions: {
+          enforceEEA,
+          activeIncidentCount: service.incidents.length,
+          subcontractorCount: service.subcontractors.length,
+          latestResilienceTestStatus: lastTest?.status ?? null,
+        },
+        outcome: {
+          simulationRunId: run.id,
+          timelineEventCount: timeline.length,
+          status,
+        },
+        survivabilityScore: survivability,
+        status,
+      }),
+    });
+
     // Create Audit Log
     await prisma.auditLog.create({
       data: {
         actor: "Risk Operations Simulator",
         action: "RUN_RESILIENCE_SIMULATION",
         object: `SimulationRun:${run.id}`,
-        afterSnapshot: JSON.stringify({ run, serviceId }),
+        afterSnapshot: JSON.stringify({
+          run,
+          serviceId,
+          exitPlanRehearsal: {
+            id: rehearsal.id,
+            digest: rehearsal.digest,
+            status: rehearsal.status,
+          },
+        }),
       },
     });
 
-    return NextResponse.json({ success: true, run });
-  } catch (error: any) {
+    return NextResponse.json({ success: true, run, rehearsal });
+  } catch (error: unknown) {
     console.error("POST run simulation error:", error);
     return NextResponse.json({ error: "Failed to run scenario simulation" }, { status: 500 });
   }

@@ -22,7 +22,7 @@ export async function GET() {
     });
 
     return NextResponse.json({ success: true, settings: responseMap });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("GET settings error:", error);
     return NextResponse.json({ error: "Failed to load policy settings" }, { status: 500 });
   }
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("POST settings error:", error);
     return NextResponse.json({ error: "Failed to update policy settings" }, { status: 500 });
   }

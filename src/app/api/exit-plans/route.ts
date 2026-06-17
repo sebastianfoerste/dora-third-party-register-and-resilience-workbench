@@ -14,7 +14,7 @@ export async function GET() {
       },
     });
     return NextResponse.json({ success: true, services });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("GET exit plans error:", error);
     return NextResponse.json({ error: "Failed to load exit strategies" }, { status: 500 });
   }
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, exitPlan });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("POST exit plan error:", error);
     return NextResponse.json({ error: "Failed to save exit strategy plan" }, { status: 500 });
   }

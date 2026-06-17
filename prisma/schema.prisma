@@ -60,6 +60,7 @@ model ICTService {
   registerEntries       RegisterEntry[]
   subcontractors        Subcontractor[]
   exitPlan              ExitPlan?
+  exitPlanRehearsals    ExitPlanRehearsal[]
   incidents             IncidentLog[]
   resilienceTests       ResilienceTest[]
 }
@@ -207,6 +208,24 @@ model ExitPlan {
   reviewer           String?
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
+}
+
+model ExitPlanRehearsal {
+  id                 String     @id @default(uuid())
+  serviceId          String
+  service            ICTService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  scenarioType       String
+  assumptionsJson    String
+  outcomeJson        String
+  survivabilityScore Int
+  status             String     @default("DRAFT") // DRAFT, COMPLETED, FAILED, APPROVED
+  reviewer           String?
+  approvedAt         DateTime?
+  digest             String
+  createdAt          DateTime   @default(now())
+
+  @@index([serviceId, createdAt])
+  @@index([status])
 }
 
 model IncidentLog {

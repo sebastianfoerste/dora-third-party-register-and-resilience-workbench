@@ -9,12 +9,12 @@ interface ExportItem {
   exportFormat: string;
   generatedFiles: string; // JSON string array
   validationWarnings: string | null; // JSON string array
-  createdAt: string;
+  createdAt: string | Date;
 }
 
 interface Props {
   initialExports: ExportItem[];
-  legalEntities: any[];
+  legalEntities: Array<{ id: string; name: string; licenceType: string }>;
   entriesCount: number;
 }
 
@@ -175,6 +175,24 @@ export default function ExportCenter({ initialExports, legalEntities, entriesCou
               </svg>
               View Board Compliance ROI
             </a>
+
+            <a
+              href="/exports/board-packs"
+              className="btn btn-secondary"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.5rem",
+                textDecoration: "none",
+                textAlign: "center",
+              }}
+            >
+              <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} style={{ width: "1.1rem", height: "1.1rem" }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-6m4 6V7m4 10v-4M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H7.5L5 5.5V19a2 2 0 002 2z" />
+              </svg>
+              Open Board Pack Command Center
+            </a>
           </div>
         </div>
 
@@ -319,7 +337,7 @@ export default function ExportCenter({ initialExports, legalEntities, entriesCou
 
               {exportsList.length === 0 && (
                 <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)", fontSize: "0.9rem" }}>
-                  No export packages generated yet. Click "Compile & Export" on the left to create your first submission package.
+                  No export packages generated yet. Click &ldquo;Compile & Export&rdquo; on the left to create your first submission package.
                 </div>
               )}
             </div>

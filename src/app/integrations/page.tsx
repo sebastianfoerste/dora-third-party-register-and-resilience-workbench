@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { getErrorMessage } from "@/lib/error-message";
 
 interface IntegrationSetting {
   id: string;
@@ -63,8 +64,8 @@ export default function IntegrationsPage() {
         };
       });
       setForms(newForms);
-    } catch (err: any) {
-      setAlertMsg({ type: "error", text: err.message || "Failed to load page data" });
+    } catch (err: unknown) {
+      setAlertMsg({ type: "error", text: getErrorMessage(err, "Failed to load page data") });
     } finally {
       setLoading(false);
     }
@@ -72,6 +73,8 @@ export default function IntegrationsPage() {
 
   useEffect(() => {
     fetchData();
+    // Initial integration health load only. Mutations refresh data explicitly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleFormChange = (systemType: string, field: string, value: string) => {
@@ -114,8 +117,8 @@ export default function IntegrationsPage() {
       if (!res.ok) throw new Error("Failed to save configuration");
       setAlertMsg({ type: "success", text: `Successfully updated config for ${s.name}.` });
       fetchData();
-    } catch (err: any) {
-      setAlertMsg({ type: "error", text: err.message || "Failed to save configuration" });
+    } catch (err: unknown) {
+      setAlertMsg({ type: "error", text: getErrorMessage(err, "Failed to save configuration") });
     }
   };
 
@@ -153,8 +156,8 @@ export default function IntegrationsPage() {
         setAlertMsg({ type: "error", text: `Connection check failed: ${data.log?.details}` });
       }
       fetchData();
-    } catch (err: any) {
-      setAlertMsg({ type: "error", text: err.message || "Connection test error" });
+    } catch (err: unknown) {
+      setAlertMsg({ type: "error", text: getErrorMessage(err, "Connection test error") });
     } finally {
       setTestingId(null);
     }
@@ -165,7 +168,7 @@ export default function IntegrationsPage() {
     setAlertMsg(null);
     try {
       const endpoint = `/api/integrations/${systemType.toLowerCase()}`;
-      const body: any = {};
+      const body: { action?: "SYNC_GROUPS" } = {};
 
       if (systemType === "IAM") {
         body.action = "SYNC_GROUPS";
@@ -185,8 +188,8 @@ export default function IntegrationsPage() {
         text: `Manual sync completed. Records updated: ${data.recordsSyncedCount || data.userCount || data.filesSynced?.length || 0}.`
       });
       fetchData();
-    } catch (err: any) {
-      setAlertMsg({ type: "error", text: err.message || "Synchronization failed" });
+    } catch (err: unknown) {
+      setAlertMsg({ type: "error", text: getErrorMessage(err, "Synchronization failed") });
     } finally {
       setSyncingType(null);
     }
@@ -228,8 +231,8 @@ export default function IntegrationsPage() {
         text: `Webhook received! Imported new vendor 'Datadog Germany GmbH' and service automatically. Generated Register Entry #${data.registerEntryId}.`
       });
       fetchData();
-    } catch (err: any) {
-      setAlertMsg({ type: "error", text: err.message || "Webhook trigger failed" });
+    } catch (err: unknown) {
+      setAlertMsg({ type: "error", text: getErrorMessage(err, "Webhook trigger failed") });
     } finally {
       setSyncingType(null);
     }
@@ -258,7 +261,6 @@ export default function IntegrationsPage() {
         {settings.map((s) => {
           const form = forms[s.systemType] || { endpointUrl: "", clientId: "", secretToken: "", folderId: "", issuerUrl: "" };
           const isConnected = s.status === "CONNECTED";
-          const isError = s.status === "ERROR";
 
           return (
             <div key={s.id} className="integration-card">

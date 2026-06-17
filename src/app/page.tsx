@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { validateRegisterEntry } from "@/lib/validators";
+import { normalizeRegisterCriticality, validateRegisterEntry } from "@/lib/validators";
 import Link from "next/link";
 
 export const revalidate = 0; // Disable caching to ensure data is always fresh
@@ -88,7 +88,6 @@ export default async function DashboardPage(props: { searchParams: Promise<{ ent
   // Calculate live validation scores for all register entries
   let totalScore = 0;
   let criticalCount = 0;
-  let totalGaps = 0;
   const serviceSummaries = [];
 
   for (const entry of entries) {
@@ -107,20 +106,15 @@ export default async function DashboardPage(props: { searchParams: Promise<{ ent
       service: entry.service,
       contract: entry.contract,
       findings: findingsMapped,
-      criticality: entry.criticality as any,
+      criticality: normalizeRegisterCriticality(entry.criticality),
       nextReviewDue: entry.nextReviewDue,
-      resilienceTests: (entry.service as any).resilienceTests,
+      resilienceTests: entry.service.resilienceTests,
     }, options);
 
     totalScore += valResult.score;
     if (entry.criticality === "CRITICAL" || entry.criticality === "IMPORTANT") {
       criticalCount++;
     }
-
-    // Count missing clauses
-    const missingCount = findingsMapped.filter((f) => f.status === "MISSING").length;
-    totalGaps += missingCount;
-
     serviceSummaries.push({
       id: entry.service.id,
       vendorName: entry.vendor.legalName,
@@ -443,7 +437,7 @@ export default async function DashboardPage(props: { searchParams: Promise<{ ent
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600 }}>Review Criticality Classification</div>
                     <div style={{ color: "var(--text-muted)", marginTop: "0.15rem" }}>
-                      AI suggested <span style={{ color: "var(--color-warning)", fontWeight: 600 }}>{a.result}</span> for {a.service.vendor.legalName} service supporting '{a.service.supportedFunction}'
+                      AI suggested <span style={{ color: "var(--color-warning)", fontWeight: 600 }}>{a.result}</span> for {a.service.vendor.legalName} service supporting &lsquo;{a.service.supportedFunction}&rsquo;
                     </div>
                     <Link href={`/vendors/${a.service.vendorId}`} style={{ color: "var(--color-brand)", textDecoration: "none", fontSize: "0.75rem", display: "inline-block", marginTop: "0.25rem" }}>Review vendor profile &rarr;</Link>
                   </div>

@@ -221,7 +221,7 @@ async function main() {
     },
   });
 
-  const ssService = await prisma.iCTService.create({
+  await prisma.iCTService.create({
     data: {
       vendorId: sumsub.id,
       legalEntityId: bp.id,
@@ -375,7 +375,7 @@ async function main() {
   });
 
   // Register entry 2 (Warning due to missing exit plan on critical service, missing LEI, USA governing law)
-  const re2 = await prisma.registerEntry.create({
+  await prisma.registerEntry.create({
     data: {
       legalEntityId: sol.id,
       vendorId: fb.id,

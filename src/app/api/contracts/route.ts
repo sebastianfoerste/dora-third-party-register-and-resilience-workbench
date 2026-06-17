@@ -46,7 +46,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, contract });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Contract upload error:", error);
     return NextResponse.json({ error: "Server error during contract creation" }, { status: 500 });
   }
@@ -63,7 +63,7 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json(contracts);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Contracts list error:", error);
     return NextResponse.json({ error: "Server error retrieving contracts" }, { status: 500 });
   }

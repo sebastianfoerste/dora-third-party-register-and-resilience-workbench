@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { validateRegisterEntry } from "@/lib/validators";
+import { normalizeRegisterCriticality, validateRegisterEntry } from "@/lib/validators";
 
 type RouteParams = {
   params: Promise<{ id?: string }>;
@@ -95,7 +95,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
               service,
               contract,
               findings: findingsMapped,
-              criticality: regEntry.criticality as any,
+              criticality: normalizeRegisterCriticality(regEntry.criticality),
             });
 
             await prisma.registerEntry.update({
@@ -125,7 +125,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       success: true,
       task: updatedTask,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Task patch error:", error);
     return NextResponse.json({ error: "Server error updating remediation task" }, { status: 500 });
   }

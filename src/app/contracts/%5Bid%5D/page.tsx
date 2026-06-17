@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import ContractReview from "@/components/ContractReview";
+import { buildContractEvidenceMap } from "@/lib/contract-evidence-map";
 import { notFound } from "next/navigation";
 
 export const revalidate = 0; // Fresh load
@@ -29,5 +30,5 @@ export default async function ContractDetailPage({ params }: RouteParams) {
     return notFound();
   }
 
-  return <ContractReview contract={contract as any} />;
+  return <ContractReview contract={contract} evidenceMap={buildContractEvidenceMap({ contract })} />;
 }

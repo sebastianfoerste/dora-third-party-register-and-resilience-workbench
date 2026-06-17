@@ -23,7 +23,7 @@ export async function GET() {
     });
 
     return NextResponse.json({ success: true, entries });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("GET annual reviews error:", error);
     return NextResponse.json({ error: "Failed to load annual review entries" }, { status: 500 });
   }
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, entry, cycle });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("POST annual review error:", error);
     return NextResponse.json({ error: "Failed to submit review sign-off" }, { status: 500 });
   }

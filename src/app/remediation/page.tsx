@@ -20,5 +20,5 @@ export default async function RemediationPage() {
     orderBy: { dueDate: "asc" },
   });
 
-  return <RemediationBoard initialTasks={tasks as any} />;
+  return <RemediationBoard initialTasks={tasks} />;
 }

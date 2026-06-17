@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import type { ContractEvidenceMap } from "@/lib/contract-evidence-map";
 
 interface FindingItem {
   id: string;
   requirementId: string;
-  status: "PRESENT" | "MISSING" | "PARTIAL" | "UNCLEAR";
+  status: string;
   extractedEvidence: string | null;
   confidence: number;
   reviewerDecision: string | null;
@@ -23,20 +24,29 @@ interface FindingItem {
 interface ContractDetail {
   id: string;
   sourceFile: string;
-  effectiveDate: string | null;
-  terminationDate: string | null;
+  effectiveDate: string | Date | null;
+  terminationDate: string | Date | null;
   governingLaw: string;
-  extractedText: string;
+  extractedText: string | null;
   vendor: { legalName: string; lei: string | null };
   legalEntity: { name: string };
   clauseFindings: FindingItem[];
 }
 
-interface Props {
-  contract: ContractDetail;
+type FindingStatus = "PRESENT" | "MISSING" | "PARTIAL" | "UNCLEAR";
+
+function normalizeFindingStatus(value: string): FindingStatus {
+  return value === "PRESENT" || value === "MISSING" || value === "PARTIAL" || value === "UNCLEAR"
+    ? value
+    : "UNCLEAR";
 }
 
-export default function ContractReview({ contract }: Props) {
+interface Props {
+  contract: ContractDetail;
+  evidenceMap?: ContractEvidenceMap;
+}
+
+export default function ContractReview({ contract, evidenceMap }: Props) {
   const router = useRouter();
   const [findings, setFindings] = useState<FindingItem[]>(contract.clauseFindings);
   const [editingFindingId, setEditingFindingId] = useState<string | null>(null);
@@ -88,14 +98,14 @@ export default function ContractReview({ contract }: Props) {
   };
 
   // Override Form States
-  const [overrideStatus, setOverrideStatus] = useState<any>("PRESENT");
+  const [overrideStatus, setOverrideStatus] = useState<FindingStatus>("PRESENT");
   const [overrideDecision, setOverrideDecision] = useState<string>("OVERRIDDEN");
   const [overrideComments, setOverrideComments] = useState<string>("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const startEdit = (finding: FindingItem) => {
     setEditingFindingId(finding.id);
-    setOverrideStatus(finding.status);
+    setOverrideStatus(normalizeFindingStatus(finding.status));
     setOverrideDecision(finding.reviewerDecision || "OVERRIDDEN");
     setOverrideComments(finding.reviewerComments || "");
   };
@@ -134,7 +144,6 @@ export default function ContractReview({ contract }: Props) {
 
   // Score calculations
   const presentCount = findings.filter((f) => f.status === "PRESENT").length;
-  const missingCount = findings.filter((f) => f.status === "MISSING").length;
   const compliancePct = findings.length > 0 ? Math.round((presentCount / findings.length) * 100) : 0;
 
   return (
@@ -167,6 +176,85 @@ export default function ContractReview({ contract }: Props) {
           </div>
         </div>
       </div>
+
+      {evidenceMap && (
+        <section className="card" style={{ marginBottom: "1.25rem", padding: "1rem 1.25rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "flex-start", marginBottom: "0.85rem" }}>
+            <div>
+              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.05em" }}>
+                Contract Evidence Map
+              </div>
+              <h2 style={{ fontSize: "1rem", marginTop: "0.2rem", color: "var(--text-primary)" }}>
+                Metadata-only proof surface
+              </h2>
+              <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", maxWidth: "760px" }}>
+                {evidenceMap.reviewNotice}
+              </p>
+            </div>
+            <div style={{ textAlign: "right", minWidth: "210px" }}>
+              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>
+                Digest
+              </div>
+              <code style={{ fontSize: "0.72rem", color: "var(--color-brand)", wordBreak: "break-all" }}>
+                {evidenceMap.digest.slice(0, 24)}
+              </code>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem", marginBottom: "0.9rem" }}>
+            <div style={{ border: "1px solid var(--border-color)", borderRadius: "6px", padding: "0.75rem" }}>
+              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>Mapped Findings</div>
+              <div style={{ fontSize: "1.4rem", fontWeight: 700 }}>{evidenceMap.entries.length}</div>
+            </div>
+            <div style={{ border: "1px solid var(--border-color)", borderRadius: "6px", padding: "0.75rem" }}>
+              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>Blockers</div>
+              <div style={{ fontSize: "1.4rem", fontWeight: 700, color: evidenceMap.blockers.length ? "var(--color-error)" : "var(--color-brand)" }}>
+                {evidenceMap.blockers.length}
+              </div>
+            </div>
+            <div style={{ border: "1px solid var(--border-color)", borderRadius: "6px", padding: "0.75rem" }}>
+              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>Warnings</div>
+              <div style={{ fontSize: "1.4rem", fontWeight: 700, color: evidenceMap.warnings.length ? "var(--color-warning)" : "var(--color-brand)" }}>
+                {evidenceMap.warnings.length}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gap: "0.5rem" }}>
+            {evidenceMap.entries.slice(0, 6).map((entry) => (
+              <div
+                key={entry.findingId}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(180px, 1.2fr) 120px minmax(180px, 1fr)",
+                  gap: "0.75rem",
+                  alignItems: "center",
+                  borderTop: "1px solid rgba(255,255,255,0.06)",
+                  paddingTop: "0.55rem",
+                  fontSize: "0.76rem",
+                }}
+              >
+                <div>
+                  <strong style={{ color: "var(--text-primary)" }}>{entry.requirementName}</strong>
+                  <div style={{ color: "var(--text-muted)" }}>{entry.regulatoryBasis}</div>
+                </div>
+                <span className={`badge ${entry.evidenceState === "linked" ? "success" : entry.evidenceState === "needs_review" ? "warning" : "danger"}`}>
+                  {entry.evidenceState}
+                </span>
+                <code style={{ color: "var(--text-secondary)", wordBreak: "break-word" }}>
+                  {entry.sourceReference}
+                </code>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ marginTop: "0.85rem" }}>
+            <Link href={`/api/contracts/${contract.id}/evidence-map`} className="btn btn-secondary" style={{ fontSize: "0.78rem", padding: "0.4rem 0.7rem" }}>
+              Open evidence map JSON
+            </Link>
+          </div>
+        </section>
+      )}
 
       <div className="split-pane">
         
@@ -429,7 +517,7 @@ export default function ContractReview({ contract }: Props) {
                         <select
                           className="form-control"
                           value={overrideStatus}
-                          onChange={(e) => setOverrideStatus(e.target.value as any)}
+                          onChange={(e) => setOverrideStatus(e.target.value as FindingStatus)}
                           style={{ padding: "0.3rem 0.5rem", fontSize: "0.8rem" }}
                         >
                           <option value="PRESENT">PRESENT (Compliant)</option>

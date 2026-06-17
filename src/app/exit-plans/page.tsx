@@ -23,6 +23,11 @@ interface Service {
   exitPlan: ExitPlan | null;
 }
 
+type SimulationResult = {
+  status: string;
+  survivability: number;
+};
+
 export default function ExitPlansPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -48,7 +53,7 @@ export default function ExitPlansPage() {
   const [simulating, setSimulating] = useState(false);
   const [simStepIndex, setSimStepIndex] = useState(-1);
   const [simLog, setSimLog] = useState<Array<{ time: string; event: string; status: string }>>([]);
-  const [simResult, setSimResult] = useState<any | null>(null);
+  const [simResult, setSimResult] = useState<SimulationResult | null>(null);
 
   const loadData = async () => {
     try {
@@ -71,6 +76,8 @@ export default function ExitPlansPage() {
 
   useEffect(() => {
     loadData();
+    // Initial load only. Subsequent refreshes are triggered by save and simulation handlers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSelectService = (s: Service) => {
@@ -218,7 +225,7 @@ export default function ExitPlansPage() {
             });
             setSimLog([...logs]);
           }
-        } catch (err) {
+        } catch (_err) {
           logs.push({
             time: "01:05",
             event: `❌ Connection error logging run in DB.`,

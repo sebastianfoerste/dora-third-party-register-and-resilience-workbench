@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getErrorMessage } from "@/lib/error-message";
 
 export async function POST(req: Request) {
   try {
@@ -32,8 +33,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ success: true, task });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("POST create remediation task error:", error);
-    return NextResponse.json({ error: "Failed to create remediation task: " + error.message }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create remediation task: " + getErrorMessage(error) }, { status: 500 });
   }
 }

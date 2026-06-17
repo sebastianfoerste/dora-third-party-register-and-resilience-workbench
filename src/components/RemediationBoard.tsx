@@ -1,15 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+  summarizeRemediationQueue,
+  type RemediationSeverity,
+  type RemediationTaskStatus,
+} from "@/lib/remediation-summary";
 
 interface RemediationTaskItem {
   id: string;
   title: string;
   description: string;
   owner: string;
-  dueDate: string;
+  dueDate: string | Date | null;
   severity: string;
   status: string;
   resolutionEvidence: string | null;
@@ -18,16 +23,26 @@ interface RemediationTaskItem {
       id: string;
       sourceFile: string;
       vendor: { legalName: string };
-    };
+    } | null;
     requirement: {
       regulatoryBasis: string;
       requirementName: string;
     };
-  };
+  } | null;
 }
 
 interface Props {
   initialTasks: RemediationTaskItem[];
+}
+
+function normalizeSeverity(value: string): RemediationSeverity {
+  return value === "HIGH" || value === "MEDIUM" || value === "LOW" ? value : "LOW";
+}
+
+function normalizeStatus(value: string): RemediationTaskStatus {
+  return value === "OPEN" || value === "IN_PROGRESS" || value === "RESOLVED"
+    ? value
+    : "OPEN";
 }
 
 export default function RemediationBoard({ initialTasks }: Props) {
@@ -89,6 +104,22 @@ export default function RemediationBoard({ initialTasks }: Props) {
     return matchesSeverity && matchesStatus;
   });
 
+  const remediationSummary = useMemo(
+    () =>
+      summarizeRemediationQueue(
+        tasks.map((task) => ({
+          id: task.id,
+          title: task.title,
+          severity: normalizeSeverity(task.severity),
+          status: normalizeStatus(task.status),
+          owner: task.owner,
+          dueDate: task.dueDate,
+          resolutionEvidence: task.resolutionEvidence,
+        }))
+      ),
+    [tasks]
+  );
+
   return (
     <div>
       <div className="page-header">
@@ -96,10 +127,38 @@ export default function RemediationBoard({ initialTasks }: Props) {
         <p className="page-subtitle">Track and close contractual and compliance gaps mapping to DORA standards.</p>
       </div>
 
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "0.75rem", marginBottom: "1.5rem" }}>
+        <div className="card" style={{ padding: "1rem" }}>
+          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600 }}>Queue Status</div>
+          <div style={{ fontSize: "1.3rem", fontWeight: 700, color: remediationSummary.status === "BLOCKED" ? "var(--color-error)" : remediationSummary.status === "REVIEW_REQUIRED" ? "var(--color-warning)" : "var(--color-brand)" }}>
+            {remediationSummary.status}
+          </div>
+        </div>
+        <div className="card" style={{ padding: "1rem" }}>
+          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600 }}>Open Gaps</div>
+          <div style={{ fontSize: "1.3rem", fontWeight: 700 }}>{remediationSummary.openCount}</div>
+        </div>
+        <div className="card" style={{ padding: "1rem" }}>
+          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600 }}>High Severity Open</div>
+          <div style={{ fontSize: "1.3rem", fontWeight: 700 }}>{remediationSummary.highOpenCount}</div>
+        </div>
+        <div className="card" style={{ padding: "1rem" }}>
+          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600 }}>Overdue</div>
+          <div style={{ fontSize: "1.3rem", fontWeight: 700 }}>{remediationSummary.overdueCount}</div>
+        </div>
+      </div>
+
+      {remediationSummary.nextActions[0] && (
+        <div style={{ marginBottom: "1.5rem", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+          <strong style={{ color: "var(--text-primary)" }}>Next action:</strong>{" "}
+          {remediationSummary.nextActions[0]}
+        </div>
+      )}
+
       {/* Filter toolbar */}
       <div className="card" style={{ padding: "1.25rem", marginBottom: "2rem" }}>
         <div style={{ display: "flex", gap: "1.5rem", alignItems: "center" }}>
-          
+
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 600 }}>Gaps Status:</span>
             <select
@@ -176,7 +235,7 @@ export default function RemediationBoard({ initialTasks }: Props) {
 
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
-                    Due Date: <strong>{new Date(t.dueDate).toLocaleDateString()}</strong>
+                    Due Date: <strong>{t.dueDate ? new Date(t.dueDate).toLocaleDateString() : "Unscheduled"}</strong>
                   </div>
                   <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.15rem" }}>
                     Owner: {t.owner || "Unassigned"}
@@ -189,18 +248,24 @@ export default function RemediationBoard({ initialTasks }: Props) {
               </p>
 
               {/* Source Contract Mapping info */}
-              <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "0.75rem", fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                <span><strong>Requirement:</strong> {t.finding.requirement.requirementName} ({t.finding.requirement.regulatoryBasis})</span>
-                <span>&middot;</span>
-                <span><strong>Vendor:</strong> {t.finding.contract.vendor.legalName}</span>
-                <span>&middot;</span>
-                <span>
-                  <strong>Contract File:</strong>{" "}
-                  <Link href={`/contracts/${t.finding.contract.id}`} style={{ color: "var(--color-brand)", textDecoration: "none" }}>
-                    {t.finding.contract.sourceFile}
-                  </Link>
-                </span>
-              </div>
+              {t.finding?.contract ? (
+                <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "0.75rem", fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                  <span><strong>Requirement:</strong> {t.finding.requirement.requirementName} ({t.finding.requirement.regulatoryBasis})</span>
+                  <span>&middot;</span>
+                  <span><strong>Vendor:</strong> {t.finding.contract.vendor.legalName}</span>
+                  <span>&middot;</span>
+                  <span>
+                    <strong>Contract File:</strong>{" "}
+                    <Link href={`/contracts/${t.finding.contract.id}`} style={{ color: "var(--color-brand)", textDecoration: "none" }}>
+                      {t.finding.contract.sourceFile}
+                    </Link>
+                  </span>
+                </div>
+              ) : (
+                <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "0.75rem", fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                  Standalone remediation task, no mapped contract finding.
+                </div>
+              )}
 
               {/* Resolution details if resolved */}
               {t.status === "RESOLVED" && t.resolutionEvidence && (

@@ -165,7 +165,7 @@ export async function POST(req: Request) {
       registerEntryId: registerEntry.id,
       contractId: contract.id,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Procurement import error:", error);
     return NextResponse.json({ error: "Server error processing procurement webhook" }, { status: 500 });
   }

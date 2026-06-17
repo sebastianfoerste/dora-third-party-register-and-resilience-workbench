@@ -11,7 +11,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       where: { serviceId: id },
     });
     return NextResponse.json({ success: true, subcontractors });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("GET subcontractors error:", error);
     return NextResponse.json({ error: "Failed to load subcontractors" }, { status: 500 });
   }
@@ -70,7 +70,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
 
     return NextResponse.json({ success: true, subcontractor: sub });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("POST subcontractor error:", error);
     return NextResponse.json({ error: "Failed to add subcontractor" }, { status: 500 });
   }

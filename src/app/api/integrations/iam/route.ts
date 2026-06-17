@@ -13,7 +13,7 @@ export async function GET() {
     }
 
     return NextResponse.json({ setting: iamSetting });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("IAM fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch IAM settings" }, { status: 500 });
   }
@@ -39,13 +39,15 @@ export async function POST(req: Request) {
       // Simulate sync users from Okta
       await new Promise((resolve) => setTimeout(resolve, 800));
 
-      const config = JSON.parse(iamSetting.authConfig || "{}");
+      const config = JSON.parse(iamSetting.authConfig || "{}") as {
+        groupMapping?: Array<{ group: string; role: string }>;
+      };
       const mappings = config.groupMapping || [];
 
       let userCount = 0;
       const mappingLogs: string[] = [];
       
-      mappings.forEach((m: any) => {
+      mappings.forEach((m) => {
         // Mock import count based on group
         const count = m.group.includes("CCO") ? 2 : 12;
         userCount += count;
@@ -86,7 +88,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ error: "Unsupported action." }, { status: 400 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("IAM sync error:", error);
     return NextResponse.json({ error: "Server error during SSO group mapping sync" }, { status: 500 });
   }

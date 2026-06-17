@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { validateRegisterEntry } from "@/lib/validators";
+import { normalizeRegisterCriticality, validateRegisterEntry } from "@/lib/validators";
 
 export const revalidate = 0; // Fresh metrics for every export
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   try {
     const legalEntities = await prisma.legalEntity.findMany();
     const vendors = await prisma.vendor.findMany();
@@ -44,7 +44,7 @@ export async function GET(req: Request) {
         service: entry.service,
         contract: entry.contract,
         findings: findingsMapped,
-        criticality: entry.criticality as any,
+        criticality: normalizeRegisterCriticality(entry.criticality),
       });
 
       totalScore += valResult.score;
@@ -336,7 +336,7 @@ export async function GET(req: Request) {
               service: e.service,
               contract: e.contract,
               findings: e.contract ? e.contract.clauseFindings.map(cf => ({ requirementId: cf.requirementId, requirementName: cf.requirement.requirementName, status: cf.status, severity: cf.requirement.severity })) : [],
-              criticality: e.criticality as any
+              criticality: normalizeRegisterCriticality(e.criticality)
             }).score
           }%</strong></td>
         </tr>
@@ -374,7 +374,7 @@ export async function GET(req: Request) {
     return new Response(htmlContent, {
       headers: { "Content-Type": "text/html; charset=utf-8" },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Coversheet export error:", error);
     return NextResponse.json({ error: "Server error generating cover sheet" }, { status: 500 });
   }

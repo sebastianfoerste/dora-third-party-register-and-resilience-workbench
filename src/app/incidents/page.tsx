@@ -23,6 +23,9 @@ interface Incident {
   service: Service;
 }
 
+type IncidentSeverity = Incident["severity"];
+type IncidentStatus = Incident["status"];
+
 export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -239,7 +242,7 @@ export default function IncidentsPage() {
                 <select
                   className="form-control"
                   value={severity}
-                  onChange={(e) => setSeverity(e.target.value as any)}
+                  onChange={(e) => setSeverity(e.target.value as IncidentSeverity)}
                 >
                   <option value="MINOR">MINOR (Local latency / no SLA breach)</option>
                   <option value="MAJOR">MAJOR (Degraded performance / SLA warning)</option>
@@ -252,7 +255,7 @@ export default function IncidentsPage() {
                 <select
                   className="form-control"
                   value={status}
-                  onChange={(e) => setStatus(e.target.value as any)}
+                  onChange={(e) => setStatus(e.target.value as IncidentStatus)}
                 >
                   <option value="ACTIVE">ACTIVE / INVESTIGATING</option>
                   <option value="RESOLVED">RESOLVED / STABLE</option>
