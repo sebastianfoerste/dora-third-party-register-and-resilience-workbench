@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { buildBoardPackCommandCenterRows } from "../board-pack-command-center";
+import {
+  buildBoardPackCommandCenterRows,
+  summarizeBoardPackCommandCenter,
+} from "../board-pack-command-center";
 import type { BoardPackRegisterEntryProjection } from "../board-pack";
 
 const baseEntry: BoardPackRegisterEntryProjection = {
@@ -130,7 +133,17 @@ describe("board pack command center", () => {
       registerEntryId: "entry-blocked",
       status: "BLOCKED",
       rehearsalStatus: "FAILED",
+      rehearsalAction: "Open remediation, rerun the rehearsal, and approve the result.",
+      rehearsalBlockingBoardPack: true,
       remediationStatus: "OPEN",
+    });
+    const summary = summarizeBoardPackCommandCenter(rows);
+    expect(summary).toMatchObject({
+      totalRows: 2,
+      blockedRows: 1,
+      criticalOrImportantRows: 1,
+      rehearsalFailedRows: 1,
+      rehearsalBlockingRows: 1,
     });
     expect(rows[0].packetHref).toBe("/api/exports/entry-blocked?kind=board-pack");
     expect(rows[0].manifestHref).toBe("/api/exports/entry-blocked?kind=board-pack&artifact=manifest");

@@ -68,7 +68,7 @@ describe("exit plan rehearsal ledger", () => {
     });
   });
 
-  it("blocks failed rehearsals and warns when critical services have no approved rehearsal", () => {
+  it("blocks failed rehearsals and critical services without approved rehearsal", () => {
     expect(
       assessExitPlanRehearsalReadiness({
         criticality: "CRITICAL",
@@ -84,6 +84,29 @@ describe("exit plan rehearsal ledger", () => {
         },
       }).blockers,
     ).toContain("exit-plan-rehearsal-failed");
+
+    expect(
+      assessExitPlanRehearsalReadiness({
+        criticality: "CRITICAL",
+        latestRehearsal: null,
+      }).blockers,
+    ).toContain("exit-plan-rehearsal-missing");
+
+    expect(
+      assessExitPlanRehearsalReadiness({
+        criticality: "CRITICAL",
+        latestRehearsal: {
+          id: "rehearsal-2",
+          scenarioType: "provider_failure",
+          status: "COMPLETED",
+          survivabilityScore: 82,
+          reviewer: "Risk",
+          approvedAt: null,
+          digest: "digest",
+          createdAt: "2026-06-16T09:00:00.000Z",
+        },
+      }).blockers,
+    ).toContain("exit-plan-rehearsal-not-approved");
 
     expect(
       assessExitPlanRehearsalReadiness({

@@ -1,6 +1,9 @@
 import Link from "next/link";
 
-import { buildBoardPackCommandCenterRows } from "@/lib/board-pack-command-center";
+import {
+  buildBoardPackCommandCenterRows,
+  summarizeBoardPackCommandCenter,
+} from "@/lib/board-pack-command-center";
 import { prisma } from "@/lib/prisma";
 
 export const revalidate = 0;
@@ -32,6 +35,7 @@ export default async function BoardPackCommandCenterPage() {
     },
   });
   const rows = buildBoardPackCommandCenterRows(entries);
+  const summary = summarizeBoardPackCommandCenter(rows);
   const topBlocker = rows.find((row) => row.status === "BLOCKED") ?? rows.find((row) => row.status === "REVIEW_REQUIRED");
 
   return (
@@ -79,6 +83,28 @@ export default async function BoardPackCommandCenterPage() {
         </div>
       </section>
 
+      <section className="card" style={{ padding: "1rem 1.25rem", marginBottom: "1.25rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>
+              Exit plan rehearsal command center
+            </div>
+            <h2 style={{ fontSize: "1.05rem", color: "var(--text-primary)", marginTop: "0.25rem" }}>
+              {summary.rehearsalBlockingRows} board-pack row{summary.rehearsalBlockingRows === 1 ? "" : "s"} blocked by rehearsal evidence
+            </h2>
+            <p style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
+              Critical services require an approved rehearsal before the board pack can be marked ready.
+            </p>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(8rem, 1fr))", gap: "0.75rem", minWidth: "min(100%, 42rem)" }}>
+            <Metric label="Rows" value={summary.totalRows} />
+            <Metric label="Critical or important" value={summary.criticalOrImportantRows} />
+            <Metric label="Missing approval" value={summary.rehearsalMissingOrNotApprovedRows} />
+            <Metric label="Failed rehearsal" value={summary.rehearsalFailedRows} />
+          </div>
+        </div>
+      </section>
+
       <section className="card" style={{ padding: 0, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "980px" }}>
@@ -110,6 +136,9 @@ export default async function BoardPackCommandCenterPage() {
                     <div>Evidence gaps: {row.evidenceGapCount}</div>
                     <div>Exit plan: {row.exitPlanStatus ?? "MISSING"}</div>
                     <div>Rehearsal: {row.rehearsalStatus ?? "MISSING"}</div>
+                    <div>Rehearsal gate: {row.rehearsalBlockingBoardPack ? "BLOCKING" : "CLEAR"}</div>
+                    <div>Action: {row.rehearsalAction}</div>
+                    {row.rehearsalDigest ? <div>Rehearsal digest: {row.rehearsalDigest.slice(0, 12)}</div> : null}
                     <div>Remediation: {row.remediationStatus}</div>
                   </td>
                   <td style={{ padding: "0.9rem 1rem", verticalAlign: "top" }}>
@@ -155,5 +184,18 @@ export default async function BoardPackCommandCenterPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={{ border: "1px solid var(--border-color)", borderRadius: "0.5rem", padding: "0.75rem" }}>
+      <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>
+        {label}
+      </div>
+      <div style={{ marginTop: "0.25rem", fontSize: "1.4rem", fontWeight: 700, color: "var(--text-primary)" }}>
+        {value}
+      </div>
+    </div>
   );
 }

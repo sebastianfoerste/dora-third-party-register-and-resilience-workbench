@@ -17,12 +17,26 @@ export interface BoardPackCommandCenterRow {
   evidenceGapCount: number;
   exitPlanStatus: string | null;
   rehearsalStatus: string | null;
+  rehearsalAction: string;
+  rehearsalDigest: string | null;
+  rehearsalBlockingBoardPack: boolean;
   remediationStatus: string;
   packetDigest: string;
   packetHref: string;
   manifestHref: string;
   reviewHref: string;
   blockerLinks: Array<{ label: string; href: string }>;
+}
+
+export interface BoardPackCommandCenterSummary {
+  totalRows: number;
+  blockedRows: number;
+  reviewRequiredRows: number;
+  readyRows: number;
+  criticalOrImportantRows: number;
+  rehearsalMissingOrNotApprovedRows: number;
+  rehearsalFailedRows: number;
+  rehearsalBlockingRows: number;
 }
 
 export function buildBoardPackCommandCenterRows(
@@ -43,6 +57,11 @@ export function buildBoardPackCommandCenterRows(
         evidenceGapCount: packet.openEvidenceGaps.length,
         exitPlanStatus: entry.service.exitPlan?.status ?? entry.service.exitPlanStatus ?? null,
         rehearsalStatus: packet.latestExitPlanRehearsal?.status ?? null,
+        rehearsalAction: rehearsalAction(packet),
+        rehearsalDigest: packet.latestExitPlanRehearsal?.digest ?? null,
+        rehearsalBlockingBoardPack: packet.gate.blockers.some((blocker) =>
+          blocker.startsWith("exit-plan-rehearsal"),
+        ),
         remediationStatus: entry.contract?.clauseFindings.some((finding) =>
           finding.remediationTasks?.some((task) => task.status !== "RESOLVED"),
         )
@@ -60,6 +79,45 @@ export function buildBoardPackCommandCenterRows(
       if (statusDelta !== 0) return statusDelta;
       return right.blockerCount - left.blockerCount || right.evidenceGapCount - left.evidenceGapCount;
     });
+}
+
+export function summarizeBoardPackCommandCenter(
+  rows: BoardPackCommandCenterRow[],
+): BoardPackCommandCenterSummary {
+  return {
+    totalRows: rows.length,
+    blockedRows: rows.filter((row) => row.status === "BLOCKED").length,
+    reviewRequiredRows: rows.filter((row) => row.status === "REVIEW_REQUIRED").length,
+    readyRows: rows.filter((row) => row.status === "READY").length,
+    criticalOrImportantRows: rows.filter((row) => row.criticality !== "NON_CRITICAL").length,
+    rehearsalMissingOrNotApprovedRows: rows.filter(
+      (row) =>
+        row.criticality !== "NON_CRITICAL" &&
+        (!row.rehearsalStatus || row.rehearsalStatus !== "APPROVED"),
+    ).length,
+    rehearsalFailedRows: rows.filter((row) => row.rehearsalStatus === "FAILED").length,
+    rehearsalBlockingRows: rows.filter((row) => row.rehearsalBlockingBoardPack).length,
+  };
+}
+
+function rehearsalAction(packet: BoardPack) {
+  if (packet.criticality === "NON_CRITICAL") {
+    return "No rehearsal required for non-critical service.";
+  }
+  const rehearsal = packet.latestExitPlanRehearsal;
+  if (!rehearsal) {
+    return "Schedule and evidence an exit-plan rehearsal.";
+  }
+  if (rehearsal.status === "FAILED") {
+    return "Open remediation, rerun the rehearsal, and approve the result.";
+  }
+  if (rehearsal.status !== "APPROVED") {
+    return "Complete reviewer approval for the latest rehearsal.";
+  }
+  if (!rehearsal.reviewer?.trim()) {
+    return "Add reviewer evidence for the approved rehearsal.";
+  }
+  return "Rehearsal evidence is ready for board-pack review.";
 }
 
 function blockerLinks(blockers: string[], entry: BoardPackRegisterEntryProjection) {

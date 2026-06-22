@@ -104,11 +104,19 @@ export function assessExitPlanRehearsalReadiness(input: {
   }
 
   if (!input.latestRehearsal) {
-    warnings.push("exit-plan-rehearsal-missing");
+    if (input.criticality === "CRITICAL") {
+      blockers.push("exit-plan-rehearsal-missing");
+    } else {
+      warnings.push("exit-plan-rehearsal-missing");
+    }
   } else if (input.latestRehearsal.status === "FAILED") {
     blockers.push("exit-plan-rehearsal-failed");
   } else if (input.latestRehearsal.status !== "APPROVED") {
-    warnings.push("exit-plan-rehearsal-not-approved");
+    if (input.criticality === "CRITICAL") {
+      blockers.push("exit-plan-rehearsal-not-approved");
+    } else {
+      warnings.push("exit-plan-rehearsal-not-approved");
+    }
   }
 
   if (input.latestRehearsal?.status === "APPROVED" && !input.latestRehearsal.reviewer?.trim()) {
