@@ -1,0 +1,319 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model LegalEntity {
+  id                 String               @id @default(uuid())
+  name               String
+  lei                String?              // Legal Entity Identifier
+  jurisdiction       String               // e.g. DE, FR, IE
+  regulatedStatus    Boolean              @default(true)
+  licenceType        String               // e.g. CASP, EMI
+  competentAuthority String               // e.g. BaFin, ACPR
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  services           ICTService[]
+  contracts          Contract[]
+  registerEntries    RegisterEntry[]
+}
+
+model Vendor {
+  id                String               @id @default(uuid())
+  legalName         String
+  groupName         String?
+  country           String
+  lei               String?
+  serviceCategories String              // JSON or comma-separated
+  concentrationTags String              // JSON or comma-separated
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  services          ICTService[]
+  contracts         Contract[]
+  registerEntries   RegisterEntry[]
+  threatIntel       ThreatIntel[]
+}
+
+model ICTService {
+  id                    String               @id @default(uuid())
+  vendorId              String
+  vendor                Vendor               @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  legalEntityId         String
+  legalEntity           LegalEntity          @relation(fields: [legalEntityId], references: [id], onDelete: Cascade)
+  serviceDescription    String
+  supportedFunction     String               // e.g. Core Banking, Crypto Custody
+  dataProcessed         String               // JSON or comma-separated list of data types
+  location              String               // Data processing/storage location
+  subcontractingStatus  String               // YES, NO, MIXED
+  subcontractorDetails  String?              // Details on critical subcontractors
+  substitutability      String               // EASY, MEDIUM, DIFFICULT
+  exitPlanStatus        String               // NONE, DRAFT, APPROVED
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  criticalityAssessments CriticalityAssessment[]
+  registerEntries       RegisterEntry[]
+  subcontractors        Subcontractor[]
+  exitPlan              ExitPlan?
+  exitPlanRehearsals    ExitPlanRehearsal[]
+  incidents             IncidentLog[]
+  resilienceTests       ResilienceTest[]
+}
+
+model Contract {
+  id              String               @id @default(uuid())
+  vendorId        String
+  vendor          Vendor               @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  legalEntityId   String
+  legalEntity     LegalEntity          @relation(fields: [legalEntityId], references: [id], onDelete: Cascade)
+  sourceFile      String               // Filename or storage path
+  effectiveDate   DateTime?
+  renewalDate     DateTime?
+  terminationDate DateTime?
+  governingLaw    String
+  extractedText   String?
+  provenanceMap   String?              // JSON mapping extracted fields to source text ranges
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  clauseFindings  ClauseFinding[]
+  registerEntries RegisterEntry[]
+}
+
+model CriticalityAssessment {
+  id            String     @id @default(uuid())
+  serviceId     String
+  service       ICTService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  function      String
+  scoringInputs String     // JSON of scoring criteria
+  result        String     // e.g. CRITICAL, IMPORTANT, NON_CRITICAL
+  confidence    Float      // 0.0 to 1.0
+  reviewer      String?
+  status        String     @default("PENDING") // PENDING, APPROVED, REJECTED
+  evidence      String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model ClauseRequirement {
+  id              String          @id @default(uuid())
+  regulatoryBasis String          // e.g. DORA Art. 30(2)
+  requirementName String          // e.g. Audit Rights, Termination
+  applicability   String          // e.g. CRITICAL_ONLY, ALL_ICT
+  expectedPattern String
+  severity        String          // e.g. HIGH, MEDIUM, LOW
+  description     String
+  clauseFindings  ClauseFinding[]
+}
+
+model ClauseFinding {
+  id                String            @id @default(uuid())
+  contractId        String
+  contract          Contract          @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  requirementId     String
+  requirement       ClauseRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  status            String            @default("UNREVIEWED") // PRESENT, MISSING, PARTIAL, UNCLEAR, NOT_APPLICABLE
+  extractedEvidence String?
+  confidence        Float
+  reviewerDecision  String?           // APPROVED, OVERRIDDEN
+  reviewerComments  String?
+  remediationTasks  RemediationTask[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+}
+
+model RegisterEntry {
+  id               String      @id @default(uuid())
+  legalEntityId    String
+  legalEntity      LegalEntity @relation(fields: [legalEntityId], references: [id], onDelete: Cascade)
+  vendorId         String
+  vendor           Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  serviceId        String
+  service          ICTService  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  contractId       String?
+  contract         Contract?   @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  criticality      String      // CRITICAL, IMPORTANT, NON_CRITICAL
+  mandatoryFields  String      // JSON list of validated mandatory fields
+  validationStatus String      // VALID, INVALID, WARNING
+  validationErrors String?     // JSON list of errors
+  lastReviewedAt   DateTime?
+  nextReviewDue    DateTime?
+  reviewerNotes    String?
+  reviewHistory    ReviewCycle[]
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
+model RoIExport {
+  id                 String   @id @default(uuid())
+  entityScope        String   // e.g. CONSOLIDATED, BaFin_ONLY
+  exportFormat       String   // EXCEL, CSV
+  generatedFiles     String   // JSON list of file paths/names
+  validationWarnings String?  // JSON list of warnings at export time
+  createdAt          DateTime @default(now())
+}
+
+model RemediationTask {
+  id                 String         @id @default(uuid())
+  findingId          String?
+  finding            ClauseFinding? @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  title              String
+  description        String
+  owner              String
+  dueDate            DateTime?
+  severity           String         // HIGH, MEDIUM, LOW
+  status             String         @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED
+  resolutionEvidence String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  actor          String
+  action         String
+  object         String
+  beforeSnapshot String?  // JSON
+  afterSnapshot  String?  // JSON
+  timestamp      DateTime @default(now())
+}
+
+model Subcontractor {
+  id                 String     @id @default(uuid())
+  serviceId          String
+  service            ICTService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  name               String
+  lei                String?
+  country            String
+  serviceDescription String
+  criticality        String     @default("NON_CRITICAL") // CRITICAL, IMPORTANT, NON_CRITICAL
+  location           String
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+}
+
+model ExitPlan {
+  id                 String      @id @default(uuid())
+  serviceId          String      @unique
+  service            ICTService  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  title              String
+  strategy           String      // Detailed transition strategy
+  testedDate         DateTime?
+  alternativeVendor  String?
+  status             String      @default("DRAFT") // DRAFT, UNDER_REVIEW, APPROVED
+  reviewer           String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+}
+
+model ExitPlanRehearsal {
+  id                 String     @id @default(uuid())
+  serviceId          String
+  service            ICTService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  scenarioType       String
+  assumptionsJson    String
+  outcomeJson        String
+  survivabilityScore Int
+  status             String     @default("DRAFT") // DRAFT, COMPLETED, FAILED, APPROVED
+  reviewer           String?
+  approvedAt         DateTime?
+  digest             String
+  createdAt          DateTime   @default(now())
+
+  @@index([serviceId, createdAt])
+  @@index([status])
+}
+
+model IncidentLog {
+  id                String     @id @default(uuid())
+  serviceId         String
+  service           ICTService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  title             String
+  severity          String     // CRITICAL, MAJOR, MINOR
+  description       String
+  incidentDate      DateTime   @default(now())
+  downtimeMinutes   Int        @default(0)
+  status            String     @default("ACTIVE") // ACTIVE, RESOLVED
+  remediationAction String?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+}
+
+model PolicySetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String   // Weight or Boolean threshold configuration value
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+model ResilienceTest {
+  id                 String     @id @default(uuid())
+  serviceId          String
+  service            ICTService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  testType           String     // VULNERABILITY_ASSESSMENT, PENETRATION_TEST, SCENARIO_DR, TLPT
+  testDate           DateTime
+  status             String     // PASSED, FAILED, PENDING
+  findingsCount      Int        @default(0)
+  evidenceSummary    String
+  nextScheduledDate  DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+}
+
+model ReviewCycle {
+  id               String        @id @default(uuid())
+  registerEntryId  String
+  registerEntry    RegisterEntry @relation(fields: [registerEntryId], references: [id], onDelete: Cascade)
+  reviewedAt       DateTime      @default(now())
+  reviewer         String
+  notes            String?
+  status           String        @default("COMPLETED")
+}
+
+model IntegrationSetting {
+  id           String   @id @default(uuid())
+  systemType   String   // GRC, PROCUREMENT, DMS, IAM
+  name         String   // OneTrust, Ironclad, GoogleDrive, Okta
+  status       String   // CONNECTED, DISCONNECTED, ERROR
+  endpointUrl  String?
+  authConfig   String?  // JSON string containing Client ID, Scope, secret token, etc.
+  lastSyncedAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model IntegrationSyncLog {
+  id           String   @id @default(uuid())
+  systemType   String
+  action       String   // IMPORT, EXPORT, SYNC_TEST
+  status       String   // SUCCESS, FAILED
+  details      String?  // Description or JSON output
+  recordsCount Int      @default(0)
+  timestamp    DateTime @default(now())
+}
+
+model ThreatIntel {
+  id          String   @id @default(uuid())
+  vendorId    String
+  cveId       String   // e.g., CVE-2026-1234
+  description String
+  severity    String   // HIGH, MEDIUM, LOW
+  status      String   // UNPATCHED, PATCHED
+  detectedAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+}
+
+model SimulationRun {
+  id           String   @id @default(uuid())
+  scenarioName String   // e.g., "Ledger AWS Outage"
+  status       String   // COMPLETED, FAILED
+  survivability Int      // Score 0-100
+  timelineLog  String   // JSON log of simulated events
+  testedAt     DateTime @default(now())
+}
