@@ -150,6 +150,7 @@ describe("DORA contract intelligence workspace", () => {
       { id: "audit_rights", label: "Audit rights", citation: "DORA Article 30(2)", required: true },
     ]);
     expect(table.rows[0].cells.every((cell) => cell.value.includes("No supported clause"))).toBe(true);
+    expect(() => buildDemoLegoraWorkspace(externalVault, table)).not.toThrow();
   });
 
   it("requires resolution evidence for remediation Lists", () => {

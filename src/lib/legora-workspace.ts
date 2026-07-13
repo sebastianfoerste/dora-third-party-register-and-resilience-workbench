@@ -164,7 +164,7 @@ export function buildChangeSet(input: {
       id,
       sourceRef,
       clauses: Object.fromEntries(
-        Object.entries(clauses).sort(([left], [right]) => left.localeCompare(right)),
+        Object.entries(clauses ?? {}).sort(([left], [right]) => left.localeCompare(right)),
       ),
     }))
     .sort((left, right) => left.id.localeCompare(right.id));
