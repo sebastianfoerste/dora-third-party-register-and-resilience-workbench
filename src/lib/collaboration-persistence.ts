@@ -1,12 +1,12 @@
 import { prisma } from "./prisma";
 import {
-  buildDemoLegoraWorkspace,
+  buildDemoCollaborationWorkspace,
   type CollaborativeReviewWorkspace,
   type CommentStatus,
   type DocumentChangeSet,
   type RemediationList,
   type ReviewDecision,
-} from "./legora-workspace";
+} from "./collaboration-workspace";
 import { buildDemoContractIntelligenceWorkspace } from "./contract-intelligence";
 
 export class ReviewConflictError extends Error {}
@@ -30,9 +30,9 @@ function activityEvent(value: string): CollaborativeReviewWorkspace["activity"][
   return ACTIVITY_EVENTS.has(normalized) ? normalized : "reviewed";
 }
 
-export async function ensurePersistedLegoraWorkspace() {
+export async function ensurePersistedCollaborationWorkspace() {
   const { vault, reviewTable } = buildDemoContractIntelligenceWorkspace();
-  const demo = buildDemoLegoraWorkspace(vault, reviewTable);
+  const demo = buildDemoCollaborationWorkspace(vault, reviewTable);
   await prisma.$transaction(async (tx) => {
     for (const cell of demo.collaboration.cells) {
       await tx.collaborativeReviewCell.upsert({
@@ -93,8 +93,8 @@ export async function ensurePersistedLegoraWorkspace() {
   });
 }
 
-export async function loadPersistedLegoraWorkspace() {
-  await ensurePersistedLegoraWorkspace();
+export async function loadPersistedCollaborationWorkspace() {
+  await ensurePersistedCollaborationWorkspace();
   const [cells, playbooks, changeSets, tasks, activity] = await Promise.all([
     prisma.collaborativeReviewCell.findMany({
       where: { matterId: MATTER_ID },
@@ -108,7 +108,7 @@ export async function loadPersistedLegoraWorkspace() {
       orderBy: { dueDate: "asc" },
     }),
     prisma.auditLog.findMany({
-      where: { object: { startsWith: "LegoraWorkspace:" } },
+      where: { object: { startsWith: "CollaborationWorkspace:" } },
       orderBy: { timestamp: "asc" },
     }),
   ]);
@@ -139,7 +139,7 @@ export async function loadPersistedLegoraWorkspace() {
       activity: activity.map((event) => ({
         id: event.id,
         event: activityEvent(event.action),
-        targetId: event.object.replace("LegoraWorkspace:", ""),
+        targetId: event.object.replace("CollaborationWorkspace:", ""),
         actor: event.actor,
         occurredAt: event.timestamp.toISOString(),
       })),
@@ -188,7 +188,7 @@ export async function mutatePersistedReview(input: {
   value?: string;
   evidenceRefs?: string[];
 }) {
-  await ensurePersistedLegoraWorkspace();
+  await ensurePersistedCollaborationWorkspace();
   if (input.action === "activate_playbook") {
     if (!input.value?.trim()) throw new Error("A human review note is required for playbook activation.");
     await prisma.$transaction(async (tx) => {
@@ -196,14 +196,13 @@ export async function mutatePersistedReview(input: {
       if (!playbook) throw new Error("Clause playbook version not found.");
       await tx.clausePlaybookVersion.updateMany({ where: { name: playbook.name }, data: { status: "retired" } });
       await tx.clausePlaybookVersion.update({ where: { id: playbook.id }, data: { status: "active", activatedAt: new Date() } });
-      await tx.auditLog.create({ data: { actor: input.actor, action: "PLAYBOOK_ACTIVATED", object: `LegoraWorkspace:${playbook.id}`, afterSnapshot: JSON.stringify({ reviewNote: input.value }) } });
+      await tx.auditLog.create({ data: { actor: input.actor, action: "PLAYBOOK_ACTIVATED", object: `CollaborationWorkspace:${playbook.id}`, afterSnapshot: JSON.stringify({ reviewNote: input.value }) } });
     });
-    return loadPersistedLegoraWorkspace();
+    return loadPersistedCollaborationWorkspace();
   }
   if (input.action === "decide_change") {
     if (input.expectedRevision === undefined || !input.value?.includes(":")) throw new Error("Change decision and expected revision are required.");
-    const [changeId, decision] = input.value.split(":");
-    if (!(["accepted", "rejected"] as const).includes(decision as "accepted" | "rejected")) throw new Error("Invalid change decision.");
+    const { changeId, decision } = parseChangeDecisionValue(input.value);
     const row = await prisma.documentChangeSet.findUnique({ where: { id: input.targetId } });
     if (!row || row.revision !== input.expectedRevision) throw new ReviewConflictError("409 Conflict: stale change set revision");
     const changes = JSON.parse(row.changesJson) as DocumentChangeSet["changes"];
@@ -216,8 +215,8 @@ export async function mutatePersistedReview(input: {
       data: { changesJson: JSON.stringify(changes), reviewStatus, reviewedAt: reviewStatus === "reviewed" ? new Date() : null, revision: { increment: 1 } },
     });
     if (updated.count !== 1) throw new ReviewConflictError("409 Conflict: stale change set revision");
-    await prisma.auditLog.create({ data: { actor: input.actor, action: "CHANGE_DECIDED", object: `LegoraWorkspace:${row.id}`, afterSnapshot: JSON.stringify({ changeId, decision, revision: input.expectedRevision + 1 }) } });
-    return loadPersistedLegoraWorkspace();
+    await prisma.auditLog.create({ data: { actor: input.actor, action: "CHANGE_DECIDED", object: `CollaborationWorkspace:${row.id}`, afterSnapshot: JSON.stringify({ changeId, decision, revision: input.expectedRevision + 1 }) } });
+    return loadPersistedCollaborationWorkspace();
   }
   if (input.action === "resolve_task") {
     if (!input.evidenceRefs?.length) throw new Error("Resolution evidence is required.");
@@ -230,12 +229,12 @@ export async function mutatePersistedReview(input: {
         data: {
           actor: input.actor,
           action: "REMEDIATION_RESOLVED",
-          object: `LegoraWorkspace:${input.targetId}`,
+          object: `CollaborationWorkspace:${input.targetId}`,
           afterSnapshot: JSON.stringify({ evidenceRefs: input.evidenceRefs }),
         },
       }),
     ]);
-    return loadPersistedLegoraWorkspace();
+    return loadPersistedCollaborationWorkspace();
   }
   if (input.expectedRevision === undefined) throw new Error("expectedRevision is required");
   const now = new Date();
@@ -276,10 +275,21 @@ export async function mutatePersistedReview(input: {
       data: {
         actor: input.actor,
         action: input.action.toUpperCase(),
-        object: `LegoraWorkspace:${input.targetId}`,
+        object: `CollaborationWorkspace:${input.targetId}`,
         afterSnapshot: JSON.stringify({ revision: input.expectedRevision + 1, value: input.value }),
       },
     });
   });
-  return loadPersistedLegoraWorkspace();
+  return loadPersistedCollaborationWorkspace();
+}
+
+export function parseChangeDecisionValue(value: string) {
+  const separator = value.lastIndexOf(":");
+  if (separator < 1) throw new Error("Change decision is malformed.");
+  const changeId = value.slice(0, separator);
+  const decision = value.slice(separator + 1);
+  if (!(["accepted", "rejected"] as const).includes(decision as "accepted" | "rejected")) {
+    throw new Error("Invalid change decision.");
+  }
+  return { changeId, decision: decision as "accepted" | "rejected" };
 }

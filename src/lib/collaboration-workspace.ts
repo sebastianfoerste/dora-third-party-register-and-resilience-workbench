@@ -65,7 +65,7 @@ export interface DocumentChange {
   documentId: string;
   locator: string;
   originalText: string;
-  proposedText: string;
+  proposedText: string | null;
   rationale: string;
   sourceRefs: string[];
   decision: ReviewDecision;
@@ -159,8 +159,17 @@ export function buildChangeSet(input: {
   table: ClauseReviewTable;
   playbook: ClausePlaybookRule[];
 }): DocumentChangeSet {
+  const digestDocuments = input.vault.documents
+    .map(({ id, sourceRef, clauses }) => ({
+      id,
+      sourceRef,
+      clauses: Object.fromEntries(
+        Object.entries(clauses ?? {}).sort(([left], [right]) => left.localeCompare(right)),
+      ),
+    }))
+    .sort((left, right) => left.id.localeCompare(right.id));
   const sourceDigest = createHash("sha256")
-    .update(JSON.stringify(input.vault.documents.map(({ id, sourceRef, clauses }) => ({ id, sourceRef, clauses }))))
+    .update(JSON.stringify(digestDocuments))
     .digest("hex");
   const changes: DocumentChange[] = input.table.rows.flatMap((row) =>
     row.cells
@@ -230,11 +239,11 @@ export async function renderReviewedDocx(input: {
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;");
-      return `<w:p><w:del w:id="${index * 2}" w:author="DORA reviewer" w:date="2026-07-13T00:00:00Z"><w:r><w:delText>${xml(change.originalText || "Missing clause")}</w:delText></w:r></w:del><w:ins w:id="${index * 2 + 1}" w:author="DORA reviewer" w:date="2026-07-13T00:00:00Z"><w:r><w:t>${xml(change.proposedText)}</w:t></w:r></w:ins></w:p>`;
+      return `<w:p><w:del w:id="${index * 2}" w:author="DORA reviewer" w:date="2026-07-13T00:00:00Z"><w:r><w:delText>${xml(change.originalText || "Missing clause")}</w:delText></w:r></w:del><w:ins w:id="${index * 2 + 1}" w:author="DORA reviewer" w:date="2026-07-13T00:00:00Z"><w:r><w:t>${xml(change.proposedText ?? "")}</w:t></w:r></w:ins></w:p>`;
     })
     .join("");
   const marker = documentXml.includes("<w:sectPr") ? "<w:sectPr" : "</w:body>";
-  documentXml = documentXml.replace(marker, `${tracked}${marker}`);
+  documentXml = documentXml.replace(marker, () => `${tracked}${marker}`);
   archive.file("word/document.xml", documentXml);
   return new Uint8Array(await archive.generateAsync({ type: "uint8array" }));
 }
@@ -275,7 +284,7 @@ export function resolveRemediationItem(list: RemediationList, itemId: string, ev
   return { ...list, items, blocked: items.filter((item) => item.status === "blocked").length };
 }
 
-export function buildDemoLegoraWorkspace(vault: ContractVault, table: ClauseReviewTable) {
+export function buildDemoCollaborationWorkspace(vault: ContractVault, table: ClauseReviewTable) {
   const playbook: ClausePlaybookRule[] = table.columns.map((column) => ({
     id: `playbook:${column.id}`,
     version: 1,

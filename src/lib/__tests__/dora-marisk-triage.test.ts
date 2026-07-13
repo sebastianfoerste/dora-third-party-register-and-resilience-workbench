@@ -44,4 +44,14 @@ describe("DORA and MaRisk boundary triage", () => {
     expect(decision.reviewState).toBe("manual_review_required");
     expect(decision.blockers).toContain("missing-ict-service-classification");
   });
+
+  it("fails closed for nullable triage identifiers", () => {
+    const decision = triageDoraMariskBoundary({
+      arrangementId: null,
+      serviceDescription: null,
+      isIctService: false,
+    });
+    expect(decision.blockers).toContain("missing-arrangement-id");
+    expect(decision.blockers).toContain("missing-service-description");
+  });
 });

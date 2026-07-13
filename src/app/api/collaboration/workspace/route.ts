@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 
 import {
-  loadPersistedLegoraWorkspace,
+  loadPersistedCollaborationWorkspace,
   mutatePersistedReview,
   ReviewConflictError,
-} from "@/lib/legora-persistence";
+} from "@/lib/collaboration-persistence";
 
 export async function GET() {
-  return NextResponse.json(await loadPersistedLegoraWorkspace());
+  return NextResponse.json(await loadPersistedCollaborationWorkspace());
 }
 
 export async function POST(request: Request) {
