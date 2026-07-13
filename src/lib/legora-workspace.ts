@@ -32,7 +32,17 @@ export interface CollaborativeReviewWorkspace {
   cells: CollaborativeReviewCell[];
   activity: Array<{
     id: string;
-    event: "comment_added" | "comment_resolved" | "locked" | "reviewed";
+    event:
+      | "comment_added"
+      | "comment_resolved"
+      | "locked"
+      | "reviewed"
+      | "lock"
+      | "assign"
+      | "decide"
+      | "comment"
+      | "resolve_comment"
+      | "remediation_resolved";
     targetId: string;
     actor: string;
     occurredAt: string;
@@ -187,28 +197,46 @@ export function decideChange(
 ): DocumentChangeSet {
   if (!changeSet.changes.some((change) => change.id === changeId)) throw new Error(`Unknown change: ${changeId}`);
   const changes = changeSet.changes.map((change) => (change.id === changeId ? { ...change, decision } : change));
-  return { ...changeSet, changes, exportAllowed: changes.length > 0 && changes.every((change) => change.decision === "accepted") };
+  return {
+    ...changeSet,
+    changes,
+    exportAllowed:
+      changes.length > 0 && changes.every((change) => change.decision !== "pending"),
+  };
 }
 
 export async function renderReviewedDocx(input: {
-  title: string;
+  source: Uint8Array;
   changeSet: DocumentChangeSet;
 }): Promise<Uint8Array> {
-  if (!input.changeSet.exportAllowed) throw new Error("Reviewed DOCX export requires every change to be accepted.");
-  const { Document, HeadingLevel, Packer, Paragraph, TextRun } = await import("docx");
-  const document = new Document({
-    sections: [{
-      children: [
-        new Paragraph({ text: input.title, heading: HeadingLevel.TITLE }),
-        ...input.changeSet.changes.flatMap((change) => [
-          new Paragraph({ children: [new TextRun({ text: change.locator, bold: true })] }),
-          new Paragraph({ children: [new TextRun(change.proposedText)] }),
-          new Paragraph({ children: [new TextRun({ text: `Basis: ${change.sourceRefs.join(", ")}`, italics: true })] }),
-        ]),
-      ],
-    }],
-  });
-  return new Uint8Array(await Packer.toBuffer(document));
+  if (!input.changeSet.exportAllowed) {
+    throw new Error("Reviewed DOCX export requires every change to be decided.");
+  }
+  const digest = createHash("sha256").update(input.source).digest("hex");
+  if (digest !== input.changeSet.sourceDigest) {
+    throw new Error("Source DOCX digest does not match the reviewed change set.");
+  }
+  const { default: JSZip } = await import("jszip");
+  const archive = await JSZip.loadAsync(input.source);
+  const documentFile = archive.file("word/document.xml");
+  if (!documentFile) throw new Error("Source DOCX is missing word/document.xml.");
+  let documentXml = await documentFile.async("string");
+  const acceptedChanges = input.changeSet.changes.filter(
+    (change) => change.decision === "accepted",
+  );
+  const tracked = acceptedChanges
+    .map((change, index) => {
+      const xml = (value: string) => value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+      return `<w:p><w:del w:id="${index * 2}" w:author="DORA reviewer" w:date="2026-07-13T00:00:00Z"><w:r><w:delText>${xml(change.originalText || "Missing clause")}</w:delText></w:r></w:del><w:ins w:id="${index * 2 + 1}" w:author="DORA reviewer" w:date="2026-07-13T00:00:00Z"><w:r><w:t>${xml(change.proposedText)}</w:t></w:r></w:ins></w:p>`;
+    })
+    .join("");
+  const marker = documentXml.includes("<w:sectPr") ? "<w:sectPr" : "</w:body>";
+  documentXml = documentXml.replace(marker, `${tracked}${marker}`);
+  archive.file("word/document.xml", documentXml);
+  return new Uint8Array(await archive.generateAsync({ type: "uint8array" }));
 }
 
 export function buildRemediationList(input: {
@@ -262,5 +290,6 @@ export function buildDemoLegoraWorkspace(vault: ContractVault, table: ClauseRevi
     collaboration: buildCollaborativeReview(vault, table),
     changeSet: buildChangeSet({ vault, table, playbook }),
     remediationList: buildRemediationList({ table, owner: "ICT Third-Party Risk", dueDate: "2026-08-31", today: "2026-07-13" }),
+    playbook,
   };
 }

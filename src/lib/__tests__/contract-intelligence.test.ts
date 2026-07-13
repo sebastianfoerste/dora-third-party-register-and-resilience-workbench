@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+
+import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -84,13 +87,27 @@ describe("DORA contract intelligence workspace", () => {
     expect(() => lockReviewCell({ workspace: locked, cellId: locked.cells[0].id, actor: "Other reviewer", expectedRevision: 1, now: new Date("2026-07-13T10:01:00Z") })).toThrow("409 Conflict");
   });
 
-  it("keeps DOCX export blocked until every change is accepted", async () => {
+  it("preserves source DOCX content and exports accepted changes only", async () => {
     const { vault, reviewTable } = buildDemoContractIntelligenceWorkspace();
     let { changeSet } = buildDemoLegoraWorkspace(vault, reviewTable);
-    await expect(renderReviewedDocx({ title: "DORA review", changeSet })).rejects.toThrow("every change");
-    for (const change of changeSet.changes) changeSet = decideChange(changeSet, change.id, "accepted");
-    const output = await renderReviewedDocx({ title: "DORA review", changeSet });
+    const sourceArchive = new JSZip();
+    sourceArchive.file(
+      "word/document.xml",
+      "<w:document xmlns:w='http://schemas.openxmlformats.org/wordprocessingml/2006/main'><w:body><w:p><w:r><w:t>Original source and table content</w:t></w:r></w:p><w:sectPr/></w:body></w:document>",
+    );
+    const source = await sourceArchive.generateAsync({ type: "uint8array" });
+    changeSet = { ...changeSet, sourceDigest: createHash("sha256").update(source).digest("hex") };
+    await expect(renderReviewedDocx({ source, changeSet })).rejects.toThrow("every change");
+    changeSet = decideChange(changeSet, changeSet.changes[0].id, "accepted");
+    for (const change of changeSet.changes.slice(1)) {
+      changeSet = decideChange(changeSet, change.id, "rejected");
+    }
+    const output = await renderReviewedDocx({ source, changeSet });
     expect(Buffer.from(output).subarray(0, 2).toString()).toBe("PK");
+    const reviewed = await JSZip.loadAsync(output);
+    const xml = await reviewed.file("word/document.xml")?.async("string");
+    expect(xml).toContain("Original source and table content");
+    expect(xml?.match(/<w:ins/g)).toHaveLength(1);
   });
 
   it("requires resolution evidence for remediation Lists", () => {

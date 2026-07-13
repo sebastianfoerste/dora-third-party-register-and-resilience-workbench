@@ -233,6 +233,7 @@ model DocumentChangeSet {
   playbookVersion Int
   changesJson     String
   reviewStatus    String   @default("pending")
+  revision        Int      @default(1)
   createdAt       DateTime @default(now())
   reviewedAt      DateTime?
 

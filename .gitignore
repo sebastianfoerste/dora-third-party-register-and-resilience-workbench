@@ -52,6 +52,7 @@ next-env.d.ts
 AGENTS.md
 agents.md
 docs/*
+!docs/LEGORA_PROGRAMME.md
 !docs/dora-marisk-triage-proof.md
 
 # Private files (not public)

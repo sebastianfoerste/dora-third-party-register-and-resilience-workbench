@@ -9,15 +9,18 @@
     "lint": "eslint",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
+    "migration:smoke": "node scripts/migration-smoke.mjs",
+    "migration:current": "node scripts/migration-current.mjs",
     "typecheck": "npm run prisma:generate && tsc --noEmit",
     "test": "vitest run",
-    "check:fast": "npm run lint && npm run typecheck && npm run test && npm run prisma:validate"
+    "check:fast": "npm run lint && npm run typecheck && npm run test && npm run prisma:validate && npm run migration:smoke"
   },
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "better-sqlite3": "^12.10.0",
     "docx": "^9.7.1",
+    "jszip": "^3.10.1",
     "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4"

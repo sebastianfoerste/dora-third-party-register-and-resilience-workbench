@@ -1,5 +1,9 @@
 import { buildDemoContractIntelligenceWorkspace } from "@/lib/contract-intelligence";
-import { buildDemoLegoraWorkspace } from "@/lib/legora-workspace";
+import { loadPersistedLegoraWorkspace } from "@/lib/legora-persistence";
+
+import { WorkspaceClient } from "./workspace-client";
+
+export const dynamic = "force-dynamic";
 
 const statusColor = {
   pass: "#34d399",
@@ -7,9 +11,9 @@ const statusColor = {
   missing: "#fb7185",
 };
 
-export default function ContractIntelligencePage() {
+export default async function ContractIntelligencePage() {
   const { vault, reviewTable, workflow } = buildDemoContractIntelligenceWorkspace();
-  const legora = buildDemoLegoraWorkspace(vault, reviewTable);
+  const legora = await loadPersistedLegoraWorkspace();
 
   return (
     <div style={{ padding: "2rem", display: "grid", gap: "1.5rem" }}>
@@ -88,7 +92,7 @@ export default function ContractIntelligencePage() {
       <section style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "1rem" }}>
         {[
           ["Collaborative cells", legora.collaboration.cells.length, "Stable IDs, comments, reviewer decisions and optimistic locks"],
-          ["Playbook changes", legora.changeSet.changes.length, "Versioned clause positions with review-gated DOCX export"],
+          ["Playbook change sets", legora.changeSets.length, "Versioned clause positions with accepted-only DOCX export"],
           ["Remediation List", legora.remediationList.items.length, "Evidence-gated tasks with owners, deadlines and dependencies"],
         ].map(([label, value, detail]) => (
           <article key={String(label)} className="card" style={{ padding: "1rem" }}>
@@ -98,6 +102,7 @@ export default function ContractIntelligencePage() {
           </article>
         ))}
       </section>
+      <WorkspaceClient initial={legora} />
     </div>
   );
 }
