@@ -39,6 +39,15 @@ const NAV_ITEMS = [
     ),
   },
   {
+    name: "Contract Intelligence",
+    path: "/contract-intelligence",
+    icon: (
+      <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 5h16v14H4V5zm4 4h8M8 13h5" />
+      </svg>
+    ),
+  },
+  {
     name: "Remediation Board",
     path: "/remediation",
     icon: (

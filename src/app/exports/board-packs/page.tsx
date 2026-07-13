@@ -3,7 +3,7 @@ import Link from "next/link";
 import {
   buildBoardPackCommandCenterRows,
   summarizeBoardPackCommandCenter,
-} from "@/lib/board-pack-cockpit";
+} from "@/lib/board-pack-command-center";
 import { prisma } from "@/lib/prisma";
 
 export const revalidate = 0;
@@ -42,7 +42,7 @@ export default async function BoardPackCommandCenterPage() {
     <main>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem", marginBottom: "1.5rem" }}>
         <div>
-          <h1 className="page-title">Board Pack Cockpit</h1>
+          <h1 className="page-title">Board Pack Command Center</h1>
           <p className="page-subtitle">
             Management export readiness across register entries, blockers, evidence gaps, exit plans, rehearsals, and remediation.
           </p>
@@ -87,7 +87,7 @@ export default async function BoardPackCommandCenterPage() {
         <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
           <div>
             <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>
-              Exit plan rehearsal cockpit
+              Exit plan rehearsal command center
             </div>
             <h2 style={{ fontSize: "1.05rem", color: "var(--text-primary)", marginTop: "0.25rem" }}>
               {summary.rehearsalBlockingRows} board-pack row{summary.rehearsalBlockingRows === 1 ? "" : "s"} blocked by rehearsal evidence
