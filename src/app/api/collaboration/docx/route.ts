@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 
-import { renderReviewedDocx, type DocumentChangeSet } from "@/lib/legora-workspace";
+import { renderReviewedDocx, type DocumentChangeSet } from "@/lib/collaboration-workspace";
 
 export async function POST(request: Request) {
   try {

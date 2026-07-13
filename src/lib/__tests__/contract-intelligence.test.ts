@@ -10,12 +10,12 @@ import {
   runRemediationWorkflow,
 } from "../contract-intelligence";
 import {
-  buildDemoLegoraWorkspace,
+  buildDemoCollaborationWorkspace,
   decideChange,
   lockReviewCell,
   renderReviewedDocx,
   resolveRemediationItem,
-} from "../legora-workspace";
+} from "../collaboration-workspace";
 
 describe("DORA contract intelligence workspace", () => {
   it("builds a provenance-bound vault and blocks external sharing", () => {
@@ -80,7 +80,7 @@ describe("DORA contract intelligence workspace", () => {
 
   it("adds stable collaborative cells and rejects stale lock revisions", () => {
     const { vault, reviewTable } = buildDemoContractIntelligenceWorkspace();
-    const { collaboration } = buildDemoLegoraWorkspace(vault, reviewTable);
+    const { collaboration } = buildDemoCollaborationWorkspace(vault, reviewTable);
     const locked = lockReviewCell({ workspace: collaboration, cellId: collaboration.cells[0].id, actor: "Reviewer", expectedRevision: 1, now: new Date("2026-07-13T10:00:00Z") });
 
     expect(locked.cells[0].revision).toBe(2);
@@ -89,7 +89,7 @@ describe("DORA contract intelligence workspace", () => {
 
   it("preserves source DOCX content and exports accepted changes only", async () => {
     const { vault, reviewTable } = buildDemoContractIntelligenceWorkspace();
-    let { changeSet } = buildDemoLegoraWorkspace(vault, reviewTable);
+    let { changeSet } = buildDemoCollaborationWorkspace(vault, reviewTable);
     const sourceArchive = new JSZip();
     sourceArchive.file(
       "word/document.xml",
@@ -118,8 +118,8 @@ describe("DORA contract intelligence workspace", () => {
         .reverse()
         .map((document) => ({ ...document, clauses: Object.fromEntries(Object.entries(document.clauses).reverse()) })),
     };
-    const first = buildDemoLegoraWorkspace(vault, reviewTable).changeSet;
-    let second = buildDemoLegoraWorkspace(reorderedVault, reviewTable).changeSet;
+    const first = buildDemoCollaborationWorkspace(vault, reviewTable).changeSet;
+    let second = buildDemoCollaborationWorkspace(reorderedVault, reviewTable).changeSet;
     expect(second.sourceDigest).toBe(first.sourceDigest);
 
     const archive = new JSZip();
@@ -150,12 +150,12 @@ describe("DORA contract intelligence workspace", () => {
       { id: "audit_rights", label: "Audit rights", citation: "DORA Article 30(2)", required: true },
     ]);
     expect(table.rows[0].cells.every((cell) => cell.value.includes("No supported clause"))).toBe(true);
-    expect(() => buildDemoLegoraWorkspace(externalVault, table)).not.toThrow();
+    expect(() => buildDemoCollaborationWorkspace(externalVault, table)).not.toThrow();
   });
 
   it("requires resolution evidence for remediation Lists", () => {
     const { vault, reviewTable } = buildDemoContractIntelligenceWorkspace();
-    const { remediationList } = buildDemoLegoraWorkspace(vault, reviewTable);
+    const { remediationList } = buildDemoCollaborationWorkspace(vault, reviewTable);
     expect(() => resolveRemediationItem(remediationList, remediationList.items[0].id, [])).toThrow("evidence");
     expect(resolveRemediationItem(remediationList, remediationList.items[0].id, ["fixture://evidence/accepted"]).items[0].status).toBe("resolved");
   });

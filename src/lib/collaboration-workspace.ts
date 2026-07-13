@@ -284,7 +284,7 @@ export function resolveRemediationItem(list: RemediationList, itemId: string, ev
   return { ...list, items, blocked: items.filter((item) => item.status === "blocked").length };
 }
 
-export function buildDemoLegoraWorkspace(vault: ContractVault, table: ClauseReviewTable) {
+export function buildDemoCollaborationWorkspace(vault: ContractVault, table: ClauseReviewTable) {
   const playbook: ClausePlaybookRule[] = table.columns.map((column) => ({
     id: `playbook:${column.id}`,
     version: 1,

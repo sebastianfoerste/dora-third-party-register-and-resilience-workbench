@@ -1,5 +1,5 @@
 import { buildDemoContractIntelligenceWorkspace } from "@/lib/contract-intelligence";
-import { loadPersistedLegoraWorkspace } from "@/lib/legora-persistence";
+import { loadPersistedCollaborationWorkspace } from "@/lib/collaboration-persistence";
 
 import { WorkspaceClient } from "./workspace-client";
 
@@ -13,7 +13,7 @@ const statusColor = {
 
 export default async function ContractIntelligencePage() {
   const { vault, reviewTable, workflow } = buildDemoContractIntelligenceWorkspace();
-  const legora = await loadPersistedLegoraWorkspace();
+  const collaboration = await loadPersistedCollaborationWorkspace();
 
   return (
     <div style={{ padding: "2rem", display: "grid", gap: "1.5rem" }}>
@@ -91,9 +91,9 @@ export default async function ContractIntelligencePage() {
 
       <section style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "1rem" }}>
         {[
-          ["Collaborative cells", legora.collaboration.cells.length, "Stable IDs, comments, reviewer decisions and optimistic locks"],
-          ["Playbook change sets", legora.changeSets.length, "Versioned clause positions with accepted-only DOCX export"],
-          ["Remediation List", legora.remediationList.items.length, "Evidence-gated tasks with owners, deadlines and dependencies"],
+          ["Collaborative cells", collaboration.collaboration.cells.length, "Stable IDs, comments, reviewer decisions and optimistic locks"],
+          ["Playbook change sets", collaboration.changeSets.length, "Versioned clause positions with accepted-only DOCX export"],
+          ["Remediation List", collaboration.remediationList.items.length, "Evidence-gated tasks with owners, deadlines and dependencies"],
         ].map(([label, value, detail]) => (
           <article key={String(label)} className="card" style={{ padding: "1rem" }}>
             <div style={{ color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>{label}</div>
@@ -102,7 +102,7 @@ export default async function ContractIntelligencePage() {
           </article>
         ))}
       </section>
-      <WorkspaceClient initial={legora} />
+      <WorkspaceClient initial={collaboration} />
     </div>
   );
 }

@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 
-type Workspace = Awaited<ReturnType<typeof import("@/lib/legora-persistence").loadPersistedLegoraWorkspace>>;
+type Workspace = Awaited<ReturnType<typeof import("@/lib/collaboration-persistence").loadPersistedCollaborationWorkspace>>;
 
 export function WorkspaceClient({ initial }: { initial: Workspace }) {
   const [workspace, setWorkspace] = useState(initial);
   const [error, setError] = useState<string | null>(null);
 
   async function mutate(payload: Record<string, unknown>) {
-    const response = await fetch("/api/legora/workspace", {
+    const response = await fetch("/api/collaboration/workspace", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ actor: "DORA legal reviewer", ...payload }),

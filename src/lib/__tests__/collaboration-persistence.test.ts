@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { parseChangeDecisionValue } from "@/lib/legora-persistence";
+import { parseChangeDecisionValue } from "@/lib/collaboration-persistence";
 
-describe("Legora persistence helpers", () => {
+describe("Collaboration persistence helpers", () => {
   it("splits a change decision at the final colon", () => {
     expect(parseChangeDecisionValue("change:doc-master-services:audit_rights:accepted")).toEqual({
       changeId: "change:doc-master-services:audit_rights",
