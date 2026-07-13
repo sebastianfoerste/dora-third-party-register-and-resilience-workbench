@@ -119,7 +119,7 @@ export function buildClauseReviewTable(
     .filter((document) => document.kind === "agreement" || document.kind === "addendum")
     .map((document) => {
       const cells = columns.map((column): ClauseReviewCell => {
-        const extracted = document.clauses[column.id]?.trim();
+        const extracted = document.clauses?.[column.id]?.trim();
         const status: ReviewStatus = extracted
           ? document.sourceStatus === "stale"
             ? "review"

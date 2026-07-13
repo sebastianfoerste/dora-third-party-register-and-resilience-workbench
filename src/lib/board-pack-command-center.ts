@@ -55,15 +55,15 @@ export function buildBoardPackCommandCenterRows(
         blockerCount: packet.gate.blockers.length,
         warningCount: packet.gate.warnings.length,
         evidenceGapCount: packet.openEvidenceGaps.length,
-        exitPlanStatus: entry.service.exitPlan?.status ?? entry.service.exitPlanStatus ?? null,
+        exitPlanStatus: entry.service?.exitPlan?.status ?? entry.service?.exitPlanStatus ?? null,
         rehearsalStatus: packet.latestExitPlanRehearsal?.status ?? null,
         rehearsalAction: rehearsalAction(packet),
         rehearsalDigest: packet.latestExitPlanRehearsal?.digest ?? null,
         rehearsalBlockingBoardPack: packet.gate.blockers.some((blocker) =>
           blocker.startsWith("exit-plan-rehearsal"),
         ),
-        remediationStatus: entry.contract?.clauseFindings.some((finding) =>
-          finding.remediationTasks?.some((task) => task.status !== "RESOLVED"),
+        remediationStatus: entry.contract?.clauseFindings?.some((finding) =>
+          finding.remediationTasks?.some((task) => task.status !== "RESOLVED") ?? false,
         )
           ? "OPEN"
           : "CLEAR",

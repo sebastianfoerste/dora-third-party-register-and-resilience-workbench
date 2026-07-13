@@ -110,6 +110,48 @@ describe("DORA contract intelligence workspace", () => {
     expect(xml?.match(/<w:ins/g)).toHaveLength(1);
   });
 
+  it("canonicalizes change-set digests and treats replacement text literally", async () => {
+    const { vault, reviewTable } = buildDemoContractIntelligenceWorkspace();
+    const reorderedVault = {
+      ...vault,
+      documents: [...vault.documents]
+        .reverse()
+        .map((document) => ({ ...document, clauses: Object.fromEntries(Object.entries(document.clauses).reverse()) })),
+    };
+    const first = buildDemoLegoraWorkspace(vault, reviewTable).changeSet;
+    let second = buildDemoLegoraWorkspace(reorderedVault, reviewTable).changeSet;
+    expect(second.sourceDigest).toBe(first.sourceDigest);
+
+    const archive = new JSZip();
+    archive.file("word/document.xml", "<w:document><w:body><w:sectPr/></w:body></w:document>");
+    const source = await archive.generateAsync({ type: "uint8array" });
+    second = {
+      ...second,
+      sourceDigest: createHash("sha256").update(source).digest("hex"),
+      exportAllowed: true,
+      changes: [{ ...second.changes[0], decision: "accepted", proposedText: "$& <literal>" }],
+    };
+    const output = await renderReviewedDocx({ source, changeSet: second });
+    const reviewed = await JSZip.loadAsync(output);
+    expect(await reviewed.file("word/document.xml")?.async("string")).toContain(
+      "$&amp; &lt;literal&gt;",
+    );
+  });
+
+  it("handles externally supplied documents without clause projections", () => {
+    const { vault } = buildDemoContractIntelligenceWorkspace();
+    const externalVault = {
+      ...vault,
+      documents: vault.documents.map((document, index) =>
+        index === 0 ? { ...document, clauses: undefined } : document,
+      ),
+    } as unknown as typeof vault;
+    const table = buildClauseReviewTable(externalVault, [
+      { id: "audit_rights", label: "Audit rights", citation: "DORA Article 30(2)", required: true },
+    ]);
+    expect(table.rows[0].cells.every((cell) => cell.value.includes("No supported clause"))).toBe(true);
+  });
+
   it("requires resolution evidence for remediation Lists", () => {
     const { vault, reviewTable } = buildDemoContractIntelligenceWorkspace();
     const { remediationList } = buildDemoLegoraWorkspace(vault, reviewTable);

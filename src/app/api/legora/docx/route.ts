@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "source DOCX digest mismatch" }, { status: 409 });
     }
     const output = await renderReviewedDocx({ source: bytes, changeSet });
-    return new Response(new Uint8Array(output).buffer, {
+    return new Response(Buffer.from(output), {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "Content-Disposition": "attachment; filename=reviewed-dora-contract.docx",

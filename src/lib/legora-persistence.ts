@@ -202,8 +202,7 @@ export async function mutatePersistedReview(input: {
   }
   if (input.action === "decide_change") {
     if (input.expectedRevision === undefined || !input.value?.includes(":")) throw new Error("Change decision and expected revision are required.");
-    const [changeId, decision] = input.value.split(":");
-    if (!(["accepted", "rejected"] as const).includes(decision as "accepted" | "rejected")) throw new Error("Invalid change decision.");
+    const { changeId, decision } = parseChangeDecisionValue(input.value);
     const row = await prisma.documentChangeSet.findUnique({ where: { id: input.targetId } });
     if (!row || row.revision !== input.expectedRevision) throw new ReviewConflictError("409 Conflict: stale change set revision");
     const changes = JSON.parse(row.changesJson) as DocumentChangeSet["changes"];
@@ -282,4 +281,15 @@ export async function mutatePersistedReview(input: {
     });
   });
   return loadPersistedLegoraWorkspace();
+}
+
+export function parseChangeDecisionValue(value: string) {
+  const separator = value.lastIndexOf(":");
+  if (separator < 1) throw new Error("Change decision is malformed.");
+  const changeId = value.slice(0, separator);
+  const decision = value.slice(separator + 1);
+  if (!(["accepted", "rejected"] as const).includes(decision as "accepted" | "rejected")) {
+    throw new Error("Invalid change decision.");
+  }
+  return { changeId, decision: decision as "accepted" | "rejected" };
 }

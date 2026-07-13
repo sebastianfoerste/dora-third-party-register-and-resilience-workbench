@@ -4,8 +4,8 @@ export type TriageRoute =
   | "MANUAL_BOUNDARY_REVIEW";
 
 export interface DoraMariskTriageInput {
-  arrangementId: string;
-  serviceDescription: string;
+  arrangementId: string | null;
+  serviceDescription: string | null;
   isIctService?: boolean;
   supportsCriticalOrImportantFunction?: boolean;
   wouldOtherwiseBePerformedByInstitution?: boolean;
@@ -75,10 +75,10 @@ export function triageDoraMariskBoundary(input: DoraMariskTriageInput): DoraMari
 
 function missingCoreFacts(input: DoraMariskTriageInput): string[] {
   const blockers: string[] = [];
-  if (!input.arrangementId.trim()) {
+  if (!input.arrangementId?.trim()) {
     blockers.push("missing-arrangement-id");
   }
-  if (!input.serviceDescription.trim()) {
+  if (!input.serviceDescription?.trim()) {
     blockers.push("missing-service-description");
   }
   if (input.isIctService === undefined) {
@@ -101,7 +101,7 @@ function decision(
 ): DoraMariskTriageDecision {
   return {
     schema: "dora-workbench.dora-marisk-triage.v1",
-    arrangementId: input.arrangementId,
+    arrangementId: input.arrangementId ?? "",
     route,
     reviewState,
     rationale,
