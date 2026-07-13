@@ -1,4 +1,5 @@
 import { buildDemoContractIntelligenceWorkspace } from "@/lib/contract-intelligence";
+import { buildDemoLegoraWorkspace } from "@/lib/legora-workspace";
 
 const statusColor = {
   pass: "#34d399",
@@ -8,6 +9,7 @@ const statusColor = {
 
 export default function ContractIntelligencePage() {
   const { vault, reviewTable, workflow } = buildDemoContractIntelligenceWorkspace();
+  const legora = buildDemoLegoraWorkspace(vault, reviewTable);
 
   return (
     <div style={{ padding: "2rem", display: "grid", gap: "1.5rem" }}>
@@ -81,6 +83,20 @@ export default function ContractIntelligencePage() {
           ))}
         </div>
         <p style={{ marginBottom: 0 }}><strong>Next action:</strong> {workflow.nextAction}</p>
+      </section>
+
+      <section style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "1rem" }}>
+        {[
+          ["Collaborative cells", legora.collaboration.cells.length, "Stable IDs, comments, reviewer decisions and optimistic locks"],
+          ["Playbook changes", legora.changeSet.changes.length, "Versioned clause positions with review-gated DOCX export"],
+          ["Remediation List", legora.remediationList.items.length, "Evidence-gated tasks with owners, deadlines and dependencies"],
+        ].map(([label, value, detail]) => (
+          <article key={String(label)} className="card" style={{ padding: "1rem" }}>
+            <div style={{ color: "var(--text-muted)", fontSize: "0.75rem", textTransform: "uppercase" }}>{label}</div>
+            <strong style={{ display: "block", marginTop: "0.4rem", fontSize: "1.4rem" }}>{value}</strong>
+            <p style={{ color: "var(--text-muted)", marginBottom: 0 }}>{detail}</p>
+          </article>
+        ))}
       </section>
     </div>
   );

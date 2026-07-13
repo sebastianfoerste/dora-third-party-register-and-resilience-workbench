@@ -182,6 +182,63 @@ model AuditLog {
   timestamp      DateTime @default(now())
 }
 
+model CollaborativeReviewCell {
+  id             String   @id
+  matterId       String
+  contractId     String
+  requirementId  String
+  reviewer       String?
+  decision       String   @default("pending")
+  revision       Int      @default(1)
+  lockedBy       String?
+  lockExpiresAt  DateTime?
+  reviewedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  comments       ReviewComment[]
+
+  @@unique([contractId, requirementId])
+  @@index([matterId, decision])
+}
+
+model ReviewComment {
+  id          String                  @id @default(uuid())
+  cellId      String
+  body        String
+  author      String
+  status      String                  @default("open")
+  createdAt   DateTime                @default(now())
+  resolvedAt  DateTime?
+  cell        CollaborativeReviewCell @relation(fields: [cellId], references: [id], onDelete: Cascade)
+
+  @@index([cellId, status])
+}
+
+model ClausePlaybookVersion {
+  id         String   @id @default(uuid())
+  name       String
+  version    Int
+  status     String   @default("draft")
+  rulesJson  String
+  createdAt  DateTime @default(now())
+  activatedAt DateTime?
+
+  @@unique([name, version])
+}
+
+model DocumentChangeSet {
+  id              String   @id @default(uuid())
+  contractId      String
+  sourceDigest    String
+  playbookVersion Int
+  changesJson     String
+  reviewStatus    String   @default("pending")
+  createdAt       DateTime @default(now())
+  reviewedAt      DateTime?
+
+  @@index([contractId, createdAt])
+}
+
 model Subcontractor {
   id                 String     @id @default(uuid())
   serviceId          String

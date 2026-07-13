@@ -6,6 +6,13 @@ import {
   buildDemoContractIntelligenceWorkspace,
   runRemediationWorkflow,
 } from "../contract-intelligence";
+import {
+  buildDemoLegoraWorkspace,
+  decideChange,
+  lockReviewCell,
+  renderReviewedDocx,
+  resolveRemediationItem,
+} from "../legora-workspace";
 
 describe("DORA contract intelligence workspace", () => {
   it("builds a provenance-bound vault and blocks external sharing", () => {
@@ -66,5 +73,30 @@ describe("DORA contract intelligence workspace", () => {
     expect(workflow.status).toBe("ready_for_review");
     expect(workflow.draftBoardPackAllowed).toBe(true);
     expect(workflow.externalDeliveryAllowed).toBe(false);
+  });
+
+  it("adds stable collaborative cells and rejects stale lock revisions", () => {
+    const { vault, reviewTable } = buildDemoContractIntelligenceWorkspace();
+    const { collaboration } = buildDemoLegoraWorkspace(vault, reviewTable);
+    const locked = lockReviewCell({ workspace: collaboration, cellId: collaboration.cells[0].id, actor: "Reviewer", expectedRevision: 1, now: new Date("2026-07-13T10:00:00Z") });
+
+    expect(locked.cells[0].revision).toBe(2);
+    expect(() => lockReviewCell({ workspace: locked, cellId: locked.cells[0].id, actor: "Other reviewer", expectedRevision: 1, now: new Date("2026-07-13T10:01:00Z") })).toThrow("409 Conflict");
+  });
+
+  it("keeps DOCX export blocked until every change is accepted", async () => {
+    const { vault, reviewTable } = buildDemoContractIntelligenceWorkspace();
+    let { changeSet } = buildDemoLegoraWorkspace(vault, reviewTable);
+    await expect(renderReviewedDocx({ title: "DORA review", changeSet })).rejects.toThrow("every change");
+    for (const change of changeSet.changes) changeSet = decideChange(changeSet, change.id, "accepted");
+    const output = await renderReviewedDocx({ title: "DORA review", changeSet });
+    expect(Buffer.from(output).subarray(0, 2).toString()).toBe("PK");
+  });
+
+  it("requires resolution evidence for remediation Lists", () => {
+    const { vault, reviewTable } = buildDemoContractIntelligenceWorkspace();
+    const { remediationList } = buildDemoLegoraWorkspace(vault, reviewTable);
+    expect(() => resolveRemediationItem(remediationList, remediationList.items[0].id, [])).toThrow("evidence");
+    expect(resolveRemediationItem(remediationList, remediationList.items[0].id, ["fixture://evidence/accepted"]).items[0].status).toBe("resolved");
   });
 });

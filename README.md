@@ -78,3 +78,4 @@ npm run dev
 - `src/lib/remediation-summary.ts` keeps unresolved remediation, missing owners, and closure evidence gaps visible for management exports.
 - `docs/board-pack-export-contract.md` describes the export contract and the review boundaries.
 - `/contract-intelligence` provides a local contract vault, clause playbook review table and supervised remediation workflow. External delivery remains disabled.
+- The same surface now implements `review.collaboration.v1`, versioned DORA clause playbooks, review-gated `document.change-set.v1` DOCX exports, and evidence-gated remediation Lists. Synthetic fixtures remain the default data source.
