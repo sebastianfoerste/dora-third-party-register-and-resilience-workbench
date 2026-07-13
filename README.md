@@ -77,3 +77,4 @@ npm run dev
 - `src/lib/board-pack.ts` contains the board pack and manifest projection used by `/api/exports/{registerEntryId}?kind=board-pack`.
 - `src/lib/remediation-summary.ts` keeps unresolved remediation, missing owners, and closure evidence gaps visible for management exports.
 - `docs/board-pack-export-contract.md` describes the export contract and the review boundaries.
+- `/contract-intelligence` provides a local contract vault, clause playbook review table and supervised remediation workflow. External delivery remains disabled.

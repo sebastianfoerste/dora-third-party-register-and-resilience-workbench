@@ -51,7 +51,7 @@ next-env.d.ts
 # Private files (not public)
 AGENTS.md
 agents.md
-docs/
-docs
+docs/*
+!docs/dora-marisk-triage-proof.md
 
 # Private files (not public)
