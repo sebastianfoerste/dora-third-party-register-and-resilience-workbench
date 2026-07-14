@@ -375,3 +375,12 @@ model SimulationRun {
   timelineLog  String   // JSON log of simulated events
   testedAt     DateTime @default(now())
 }
+
+model BatchReviewRun {
+  id            String   @id @default(uuid())
+  name          String
+  contractCount Int
+  blockerCount  Int
+  tableJson     String
+  createdAt     DateTime @default(now())
+}
