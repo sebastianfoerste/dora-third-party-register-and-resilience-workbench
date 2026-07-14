@@ -1,0 +1,10 @@
+import { buildClauseReviewTable, buildContractVault, type ClausePlaybookColumn, type ClauseReviewTable, type ContractVault, type ContractVaultDocumentInput } from "./contract-intelligence";
+export interface PersistedContractInput { id: string; vendorId: string; vendorName: string; sourceFile: string; hasProvenance: boolean; findings: Array<{ requirementId: string; status: string; extractedEvidence: string | null }> }
+export interface BatchReviewResult { schema: "dora.batch-review.v1"; runName: string; vault: ContractVault; reviewTable: ClauseReviewTable; blockerCount: number; contractCount: number; requiresHumanReview: true }
+export function buildBatchReview(input: { runName: string; matterId: string; contracts: PersistedContractInput[]; requirements: Array<{ id: string; requirementName: string; regulatoryBasis: string; applicability: string }> }): BatchReviewResult {
+  const documents: ContractVaultDocumentInput[] = input.contracts.map(contract => { const clauses: Record<string, string | undefined> = {}; for (const finding of contract.findings) if ((finding.status === "PRESENT" || finding.status === "PARTIAL") && finding.extractedEvidence) clauses[finding.requirementId] = finding.extractedEvidence; return { id: contract.id, vendorId: contract.vendorId, vendorName: contract.vendorName, title: contract.sourceFile, kind: "agreement", sourceRef: `contract:${contract.id}:${contract.sourceFile}`, sourceStatus: contract.hasProvenance ? "verified" : "fixture", clauses }; });
+  const columns: ClausePlaybookColumn[] = input.requirements.map(requirement => ({ id: requirement.id, label: requirement.requirementName, citation: requirement.regulatoryBasis, required: requirement.applicability === "ALL_ICT" }));
+  const vault = buildContractVault({ matterId: input.matterId, name: input.runName, documents });
+  const reviewTable = buildClauseReviewTable(vault, columns);
+  return { schema: "dora.batch-review.v1", runName: input.runName, vault, reviewTable, blockerCount: reviewTable.blockerCount, contractCount: documents.length, requiresHumanReview: true };
+}

@@ -48,6 +48,15 @@ const NAV_ITEMS = [
     ),
   },
   {
+    name: "Clause Benchmark",
+    path: "/contract-intelligence/benchmark",
+    icon: (
+      <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 19h16M6 16V8m6 8V4m6 12v-5" />
+      </svg>
+    ),
+  },
+  {
     name: "Remediation Board",
     path: "/remediation",
     icon: (
