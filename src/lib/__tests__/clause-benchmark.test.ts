@@ -1,0 +1,10 @@
+import { describe, expect, it } from "vitest";
+import { buildClauseBenchmark, type BenchmarkFindingInput, type BenchmarkRequirementInput } from "../clause-benchmark";
+const requirements: BenchmarkRequirementInput[] = [{ id: "b", regulatoryBasis: "DORA Art. 30(2)(b)", requirementName: "Locations", severity: "HIGH", applicability: "ALL_ICT" }, { id: "d", regulatoryBasis: "DORA Art. 30(2)(d)", requirementName: "SLAs", severity: "MEDIUM", applicability: "ALL_ICT" }];
+const findings: BenchmarkFindingInput[] = [{ contractId: "c1", vendorName: "CloudCo", requirementId: "b", status: "PRESENT", reviewerDecision: "APPROVED" }, { contractId: "c2", vendorName: "DataCo", requirementId: "b", status: "MISSING", reviewerDecision: null }, { contractId: "c3", vendorName: "DataCo", requirementId: "b", status: "MISSING", reviewerDecision: null }, { contractId: "c1", vendorName: "CloudCo", requirementId: "d", status: "PARTIAL", reviewerDecision: null }, { contractId: "c2", vendorName: "DataCo", requirementId: "d", status: "NOT_APPLICABLE", reviewerDecision: "APPROVED" }];
+describe("clause benchmark", () => {
+  it("computes coverage and deviation", () => { const report = buildClauseBenchmark({ requirements, findings }); expect(report.rows[0].coverageRate).toBeCloseTo(1 / 3); expect(report.rows[1].deviationRate).toBe(1); });
+  it("ranks high severity and worst vendors", () => { const row = buildClauseBenchmark({ requirements, findings }).rows[0]; expect(row.severity).toBe("HIGH"); expect(row.worstVendors[0]).toEqual({ vendorName: "DataCo", missing: 2 }); });
+  it("provides statutory negotiation positions", () => { const report = buildClauseBenchmark({ requirements, findings }); expect(report.rows[0].negotiationPosition).toContain("not negotiable"); expect(report.summary.highSeverityGaps).toBe(1); });
+  it("handles an empty database fail-closed", () => { const report = buildClauseBenchmark({ requirements, findings: [] }); expect(report.contractCount).toBe(0); expect(report.requiresHumanReview).toBe(true); expect(report.externalDeliveryAllowed).toBe(false); });
+});
