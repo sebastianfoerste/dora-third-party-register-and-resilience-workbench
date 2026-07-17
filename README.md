@@ -79,3 +79,13 @@ npm run dev
 - `docs/board-pack-export-contract.md` describes the export contract and the review boundaries.
 - `/contract-intelligence` provides a local contract vault, clause playbook review table and supervised remediation workflow. External delivery remains disabled.
 - The same surface now implements `review.collaboration.v1`, versioned DORA clause playbooks, review-gated `document.change-set.v1` DOCX exports, and evidence-gated remediation Lists. Synthetic fixtures remain the default data source.
+
+## Related
+
+Part of a portfolio of deterministic, review-gated EU-regulation tools:
+
+- [micar-whitepaper-linter](https://github.com/sebastianfoerste/micar-whitepaper-linter) — MiCAR whitepaper linter with pinpoint citations and a CI action.
+- [eu-ai-act-classifier](https://github.com/sebastianfoerste/eu-ai-act-classifier) — EU AI Act risk-tier classifier with cited obligations.
+- [eu-financial-reg-horizon-scanner](https://github.com/sebastianfoerste/eu-financial-reg-horizon-scanner) — Review-gated EU financial-regulation horizon scanner.
+
+Curated index of EU financial-regulation primary sources and tools: [awesome-eu-fintech-regulation](https://github.com/sebastianfoerste/awesome-eu-fintech-regulation).
